@@ -967,6 +967,11 @@ function defaultCards(){
 //  STATE
 // ══════════════════════════════════════════════════
 let cards = defaultCards();   // { cid: { title, fields[] } }
+let gstruct = {
+  fieldDefs: {}, fieldOrder: {}, hiddenFields: {}, hiddenCards: {},
+  hiddenSections: {}, cardTitles: {}, newFields: {}, newCards: {},
+  sdefs: null, secCards: null
+};
 let curStep = 0;
 let authed = false;
 let pendingFn = null;
