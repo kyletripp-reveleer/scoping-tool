@@ -459,6 +459,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
     <div class="ver-actions">
       <button class="btn btn-gh btn-sm" onclick="openVerModal()">⊕ New Customer</button>
       <button class="btn btn-gh btn-sm" onclick="auth(()=>openManageModal())">⚙ Manage</button>
+    <button class="btn btn-gh btn-sm" id="hiddenBtn" style="display:none" onclick="auth(()=>openHiddenModal())">👁 Hidden Items</button>
       <button class="btn btn-pri btn-sm" onclick="exportVersion()">↓ Export Copy</button>
     </div>
   </div>
@@ -627,7 +628,8 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 // ══════════════════════════════════════════════════
 const PW = '522522';
 const SK = 'ci-v5';
-const VER_INDEX_KEY = 'ci-ver-index'; // stores [{id,name,created}]
+const VER_INDEX_KEY  = 'ci-ver-index';      // [{id,name,created}]
+const GLOBAL_STRUCT_KEY = 'ci-global-struct'; // global form structure
 
 // ══════════════════════════════════════════════════
 //  VERSION MANAGEMENT
@@ -683,6 +685,7 @@ async function switchVersion(id){
   updProg();
   Object.keys(cards).forEach(cid=>{ attachBranchListeners(cid); evalBranching(cid); });
   migrateValFromDom();
+  updateHiddenBtn();
   await loadPipeData();
   if (currentMode === 'pipeline') buildPipeline();
   toast(`Switched to: ${verIndex.find(v=>v.id===id)?.name||id}`,'📋');
@@ -706,23 +709,7 @@ async function createVersion(){
   // Save current state first
   await saveData();
 
-  // Always copy current form structure; strip answers so new customer starts blank
-  {
-    const snapshot = JSON.parse(JSON.stringify({cards, sdefs: SDEFS, secCards: SEC_CARDS}));
-    const allDefaults = Object.keys(defaultCards());
-    const deleted = allDefaults.filter(cid => !cards[cid]);
-    Object.keys(snapshot.cards).forEach(cid => {
-      (snapshot.cards[cid]?.fields || []).forEach(f => { delete f.val; });
-    });
-    try {
-      await store.set(verStorageKey(id), JSON.stringify({
-        cards: snapshot.cards,
-        deleted,
-        sdefs: snapshot.sdefs,
-        secCards: snapshot.secCards
-      }));
-    } catch(e){}
-  }
+  // New customer starts blank — loadData will build from defaultCards + gstruct
 
   verIndex.push({id, name, created: new Date().toISOString()});
   await saveVerIndex();
@@ -818,13 +805,6 @@ function exportVersion(){
     'let cards = defaultCards();   // { cid: { title, fields[] } }',
     'let cards = (function(){ var d=defaultCards(); if(window.__BAKED__){ Object.keys(window.__BAKED__.cards).forEach(function(k){ d[k]=window.__BAKED__.cards[k]; }); } return d; })();   // { cid: { title, fields[] } }'
   );
-
-  patched = patched.replace(
-    'let pipePhases = JSON.parse(JSON.stringify(PIPE_PHASES_DEFAULT));',
-    'let pipePhases = window.__BAKED__ ? JSON.parse(JSON.stringify(window.__BAKED__.pipe)) : JSON.parse(JSON.stringify(PIPE_PHASES_DEFAULT));'
-  );
-
-  var safeTitle = curName.replace(/</g,'&lt;').replace(/>/g,'&gt;');
   patched = patched.replace(/<title>[^<]*<\/title>/, '<title>Customer Scoping \u2014 ' + safeTitle + '<\/title>');
 
   var blob = new Blob([patched], {type:'text/html'});
@@ -1058,80 +1038,48 @@ function setSync(s,l){
 
 async function loadData(){
   try{
+    // Always start fresh from defaultCards
+    cards = defaultCards();
+    // Apply global structure overrides (edits, hidden flags, new fields, etc.)
+    applyGStruct();
+    // Now load this customer's answers
     const val=await store.get(verStorageKey(curVerId));
     if(val){
       const saved=JSON.parse(val);
-      // Restore section/phase definitions
-      if(Array.isArray(saved.sdefs) && saved.sdefs.length) SDEFS = saved.sdefs;
-      if(Array.isArray(saved.secCards) && saved.secCards.length){
-        SEC_CARDS.length = 0;
-        saved.secCards.forEach(arr => SEC_CARDS.push(arr));
-      }
-      if(saved.cards){
-        Object.keys(saved.cards).forEach(cid=>{
-          if(!cards[cid]) cards[cid] = {title: saved.cards[cid].title || cid, fields:[]};
-          cards[cid].fields=saved.cards[cid].fields;
-          if(saved.cards[cid].title) cards[cid].title=saved.cards[cid].title;
+      // Pour saved answers onto fields by matching field ID
+      const vals = saved.vals || {};
+      // Legacy: extract vals from old cards format
+      if(!saved.vals && saved.cards){
+        Object.values(saved.cards).forEach(function(card){
+          (card.fields||[]).forEach(function(f){
+            if(f.id && f.val!==undefined && f.val!==null && f.val!=='') vals[f.id]=f.val;
+          });
         });
       }
-      if(Array.isArray(saved.deleted)){
-        saved.deleted.forEach(cid=>{
-          delete cards[cid];
-          SEC_CARDS.forEach(arr=>{const i=arr.indexOf(cid);if(i>-1)arr.splice(i,1);});
+      Object.values(cards).forEach(function(card){
+        (card.fields||[]).forEach(function(f){
+          if(vals[f.id]!==undefined) f.val=vals[f.id];
         });
-      }
-      // ── Merge any new builtin cards added since this snapshot was saved ──
-      const defaults = defaultCards();
-      // Map of cid → preferred section title (for fuzzy matching against saved SDEFS)
-      const cidSectionHint = {
-        'c0-org':'Customer Profile',
-        'c1-platform':'Platform Configuration','c1-lob':'Platform Configuration','c1-risk':'Platform Configuration','c1-core':'Platform Configuration',
-        'c2-workflows':'Workflow Configuration','c2-poc':'Workflow Configuration',
-        'c3-native':'POC Integration','c3-uni':'POC Integration',
-        'c4-data':'Data Sources',
-        'c5-coding':'Coding Services','c5-notes':'Coding Services',
-      };
-      const defaultSecCards = [['c0-org'],['c1-platform','c1-lob','c1-risk'],['c2-workflows','c2-poc','c3-native','c3-uni'],[],['c4-data'],['c5-coding','c5-notes'],['c1-core'],[]];
-      Object.keys(defaults).forEach(cid => {
-        // Add missing card to cards object
-        if (!cards[cid]) cards[cid] = defaults[cid];
-        // Add to SEC_CARDS if not already present anywhere
-        const alreadyPlaced = SEC_CARDS.some(arr => arr.includes(cid));
-        if (!alreadyPlaced) {
-          // Try to find section by title hint first
-          const hint = cidSectionHint[cid] || '';
-          let targetSi = -1;
-          if (hint) {
-            targetSi = SDEFS.findIndex(s => s.ttl.toLowerCase().includes(hint.toLowerCase().split(' ')[0]));
-          }
-          // Fallback: use default section index
-          if (targetSi === -1) {
-            defaultSecCards.forEach((arr, si) => { if (arr.includes(cid) && si < SEC_CARDS.length) targetSi = si; });
-          }
-          if (targetSi >= 0 && SEC_CARDS[targetSi]) SEC_CARDS[targetSi].push(cid);
-        }
       });
     }
     setSync('ok', inClaude ? 'Synced' : 'Saved locally');
-  }catch(e){ setSync('ok','Ready'); }
+  }catch(e){ console.error('[loadData]',e); setSync('ok','Ready'); }
 }
 
 async function saveData(){
   setSync('sy','Saving…');
   try{
-    const allDefaults=Object.keys(defaultCards());
-    const deleted=allDefaults.filter(cid=>!cards[cid]);
-    const cardsPayload={};
-    Object.keys(cards).forEach(cid=>{
-      cardsPayload[cid]={title:cards[cid].title,fields:cards[cid].fields};
+    // Save only field values keyed by field ID — structure is global
+    const vals={};
+    Object.values(cards).forEach(function(card){
+      (card.fields||[]).forEach(function(f){
+        if(f.val!==undefined && f.val!==null && f.val!=='' && !(Array.isArray(f.val)&&f.val.length===0))
+          vals[f.id]=f.val;
+      });
     });
-    await store.set(verStorageKey(curVerId),JSON.stringify({
-      cards:cardsPayload, deleted,
-      sdefs: SDEFS,
-      secCards: SEC_CARDS,
-    }));
+    await store.set(verStorageKey(curVerId), JSON.stringify({vals:vals}));
     setSync('ok', inClaude ? 'Saved · shared' : 'Saved locally');
-    setTimeout(()=>setSync('ok', inClaude ? 'Synced' : 'Saved locally'),2200);
+    setTimeout(function(){ setSync('ok', inClaude ? 'Synced' : 'Saved locally'); },2200);
   }catch(e){ setSync('er','Save failed'); toast('Could not save','⚠️'); }
 }
 
@@ -1206,9 +1154,156 @@ async function resetForm() {
   toast('Form reset ✓', '↺');
 }
 
+
+// ══════════════════════════════════════════════════
+//  GLOBAL STRUCTURE — persists form edits for ALL customers
+// ══════════════════════════════════════════════════
+
+function saveGStruct(){
+  try{ localStorage.setItem(GLOBAL_STRUCT_KEY, JSON.stringify(gstruct)); }catch(e){}
+}
+
+function loadGStruct(){
+  try{
+    const raw = localStorage.getItem(GLOBAL_STRUCT_KEY);
+    if(raw){
+      const s = JSON.parse(raw);
+      gstruct.fieldDefs     = s.fieldDefs     || {};
+      gstruct.fieldOrder    = s.fieldOrder    || {};
+      gstruct.hiddenFields  = s.hiddenFields  || {};
+      gstruct.hiddenCards   = s.hiddenCards   || {};
+      gstruct.hiddenSections= s.hiddenSections|| {};
+      gstruct.cardTitles    = s.cardTitles    || {};
+      gstruct.newFields     = s.newFields     || {};
+      gstruct.newCards      = s.newCards      || {};
+      gstruct.sdefs         = s.sdefs         || null;
+      gstruct.secCards      = s.secCards      || null;
+    }
+  }catch(e){ console.error('[loadGStruct]',e); }
+}
+
+// Apply global structure on top of fresh defaultCards().
+// Called every time cards is reset (loadData, switchVersion).
+function applyGStruct(){
+  try{
+    // 1. Override field definitions (label, type, opts, hint, etc.)
+    Object.keys(gstruct.fieldDefs).forEach(function(fid){
+      var ov = gstruct.fieldDefs[fid];
+      Object.values(cards).forEach(function(card){
+        var f = (card.fields||[]).find(function(x){ return x.id===fid; });
+        if(f) Object.assign(f, ov);
+      });
+    });
+
+    // 2. Apply card title overrides
+    Object.keys(gstruct.cardTitles).forEach(function(cid){
+      if(cards[cid]) cards[cid].title = gstruct.cardTitles[cid];
+    });
+
+    // 3. Merge user-added fields into their cards
+    Object.keys(gstruct.newFields).forEach(function(cid){
+      if(!cards[cid]) return;
+      var existing = new Set((cards[cid].fields||[]).map(function(f){ return f.id; }));
+      (gstruct.newFields[cid]||[]).forEach(function(f){
+        if(!existing.has(f.id)) cards[cid].fields.push(JSON.parse(JSON.stringify(f)));
+      });
+    });
+
+    // 4. Apply field order
+    Object.keys(gstruct.fieldOrder).forEach(function(cid){
+      if(!cards[cid]) return;
+      var order = gstruct.fieldOrder[cid];
+      var map = {};
+      (cards[cid].fields||[]).forEach(function(f){ map[f.id]=f; });
+      var ordered = [];
+      order.forEach(function(fid){ if(map[fid]) ordered.push(map[fid]); });
+      // Append any new fields not yet in the order
+      (cards[cid].fields||[]).forEach(function(f){ if(!order.includes(f.id)) ordered.push(f); });
+      cards[cid].fields = ordered;
+    });
+
+    // 5. Add user-created cards
+    Object.keys(gstruct.newCards).forEach(function(cid){
+      if(!cards[cid]){
+        var nc = gstruct.newCards[cid];
+        cards[cid] = {title: nc.title, fields: (nc.fields||[]).map(function(f){ return JSON.parse(JSON.stringify(f)); })};
+        var si = nc.secIdx;
+        if(si!==undefined && SEC_CARDS[si] && !SEC_CARDS[si].includes(cid)){
+          SEC_CARDS[si].push(cid);
+        }
+      }
+    });
+
+    // 6. Apply phase/section overrides
+    if(gstruct.sdefs && gstruct.sdefs.length){
+      SDEFS.length=0; gstruct.sdefs.forEach(function(s){ SDEFS.push(Object.assign({},s)); });
+    }
+    if(gstruct.secCards && gstruct.secCards.length){
+      SEC_CARDS.length=0; gstruct.secCards.forEach(function(a){ SEC_CARDS.push(a.slice()); });
+    }
+  }catch(e){ console.error('[applyGStruct]',e); }
+}
+
+// Hidden items UI
+function updateHiddenBtn(){
+  var any = Object.keys(gstruct.hiddenFields).length ||
+            Object.keys(gstruct.hiddenCards).length  ||
+            Object.keys(gstruct.hiddenSections).length;
+  var btn = document.getElementById('hiddenBtn');
+  if(btn) btn.style.display = any ? '' : 'none';
+}
+function openHiddenModal(){ renderHiddenModal(); document.getElementById('hiddenOv').classList.add('on'); }
+function closeHiddenModal(){ document.getElementById('hiddenOv').classList.remove('on'); }
+function renderHiddenModal(){
+  var defs = defaultCards(); var html = '';
+  var hs = SDEFS.filter(function(s){ return gstruct.hiddenSections[s.id]; });
+  if(hs.length){
+    html += '<div class="ml">Hidden Phases</div>';
+    hs.forEach(function(s){
+      html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--s2);border:1px solid var(--bd);border-radius:7px;margin-bottom:8px">' +
+              '<span>' + esc(s.ico) + ' <strong>' + esc(s.ttl) + '</strong></span>' +
+              '<button class="btn btn-gh btn-sm" onclick="restoreSection(\'' + s.id + '\')">↩ Restore</button></div>';
+    });
+  }
+  var hc = Object.keys(gstruct.hiddenCards);
+  if(hc.length){
+    html += '<div class="ml" style="margin-top:14px">Hidden Cards</div>';
+    hc.forEach(function(cid){
+      var t = (defs[cid]||cards[cid]||{}).title||cid;
+      html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--s2);border:1px solid var(--bd);border-radius:7px;margin-bottom:8px">' +
+              '<strong>' + esc(t) + '</strong>' +
+              '<button class="btn btn-gh btn-sm" onclick="restoreCard(\'' + cid + '\')">↩ Restore</button></div>';
+    });
+  }
+  var hf = Object.keys(gstruct.hiddenFields);
+  if(hf.length){
+    html += '<div class="ml" style="margin-top:14px">Hidden Fields</div>';
+    hf.forEach(function(fid){
+      var lbl = fid;
+      Object.values(defs).forEach(function(c){ (c.fields||[]).forEach(function(f){ if(f.id===fid) lbl=f.lbl; }); });
+      // Also check gstruct.fieldDefs for overridden label
+      if(gstruct.fieldDefs[fid] && gstruct.fieldDefs[fid].lbl) lbl = gstruct.fieldDefs[fid].lbl;
+      html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--s2);border:1px solid var(--bd);border-radius:7px;margin-bottom:8px">' +
+              esc(lbl) +
+              '<button class="btn btn-gh btn-sm" onclick="restoreField(\'' + fid + '\')">↩ Restore</button></div>';
+    });
+  }
+  if(!html) html='<p style="color:var(--mu);font-size:12px;text-align:center;padding:20px 0">No hidden items.</p>';
+  document.getElementById('hiddenModalBody').innerHTML=html;
+}
+function restoreSection(sid){ delete gstruct.hiddenSections[sid]; saveGStruct(); updateHiddenBtn(); rebuildAll(); renderHiddenModal(); toast('Phase restored','↩'); }
+function restoreCard(cid){ delete gstruct.hiddenCards[cid]; saveGStruct(); updateHiddenBtn(); rebuildAll(); renderHiddenModal(); toast('Card restored','↩'); }
+function restoreField(fid){
+  delete gstruct.hiddenFields[fid];
+  saveGStruct(); updateHiddenBtn();
+  Object.keys(cards).forEach(function(cid){ if((cards[cid]?.fields||[]).some(function(f){ return f.id===fid; })) refreshCard(cid); });
+  renderHiddenModal(); toast('Field restored','↩');
+}
+
 async function init(){
   setSync('sy','Loading…');
   await loadVerIndex();
+  loadGStruct();
   await loadData();
   document.getElementById('ldr').classList.add('off');
   buildVerSelect();
@@ -1218,6 +1313,7 @@ async function init(){
     evalBranching(cid);
   });
   migrateValFromDom();
+  updateHiddenBtn();
   await loadPipeGlobal();
   await loadPipeData();
   hookPipelineLiveUpdates();
@@ -1236,6 +1332,7 @@ function goTo(n){ document.getElementById('nb'+curStep)?.classList.remove('on');
 function buildSections(){
   const summaryIdx = SDEFS.length - 1;
   document.getElementById('wrap').innerHTML=SDEFS.map((s,i)=>{
+    if(i!==summaryIdx && gstruct.hiddenSections[s.id]) return '';
     const isSummary = i === summaryIdx;
     const editBtns = !isSummary ? `
       <div class="sec-h-acts">
@@ -1255,7 +1352,7 @@ function buildSections(){
             <button class="btn-add-card" onclick="auth(()=>promptAddCard(${i}))">＋ Add Card</button>
           </div>`;
       } else {
-        cardHtml = cids.map(cid=>renderCard(cid)).join('');
+        cardHtml = cids.filter(function(cid){return !gstruct.hiddenCards[cid];}).map(cid=>renderCard(cid)).join('');
         cardHtml += `<div class="add-card-row"><button class="btn-add-card" onclick="auth(()=>promptAddCard(${i}))">＋ Add Another Card</button></div>`;
       }
     } else {
@@ -1334,21 +1431,19 @@ function saveSecModal(){
     toast('Phase updated','✓');
   }
 
-  closeSecModal();
-  rebuildAll();
-  saveData();
+  gstruct.sdefs=SDEFS.map(function(s){return Object.assign({},s);});
+  gstruct.secCards=SEC_CARDS.map(function(a){return a.slice();});
+  saveGStruct();
+  closeSecModal(); rebuildAll();
 }
 
 function deleteSection(idx){
-  if(SDEFS.length <= 2){ toast('Cannot delete the only phase','⚠️'); return; }
-  const s = SDEFS[idx];
-  if(!confirm(`Delete the "${s.ttl}" phase? Its cards and fields will be removed.`)) return;
-  SDEFS.splice(idx, 1);
-  SEC_CARDS.splice(idx, 1);
-  if(curStep >= SDEFS.length - 1) curStep = SDEFS.length - 2;
-  rebuildAll();
-  saveData();
-  toast('Phase deleted','🗑');
+  if(SDEFS.length<=2){ toast('Cannot hide the only phase','⚠️'); return; }
+  var s=SDEFS[idx];
+  if(!confirm('Hide "'+s.ttl+'" for all customers? Restore via Hidden Items.')) return;
+  gstruct.hiddenSections[s.id]=true;
+  if(curStep>=SDEFS.length-1) curStep=0;
+  saveGStruct(); updateHiddenBtn(); rebuildAll(); toast('Phase hidden for all customers','👁️');
 }
 
 function rebuildAll(){
@@ -1376,11 +1471,11 @@ function promptAddCard(secIdx){
   // Add to this section's card list
   if(!SEC_CARDS[secIdx]) SEC_CARDS[secIdx] = [];
   SEC_CARDS[secIdx].push(cid);
-  rebuildAll();
-  // Navigate to the section that got the card
-  goTo(secIdx);
-  saveData();
-  toast(`Card "${title}" added`, '✓');
+  gstruct.newCards[cid]={title:title,fields:[],secIdx:secIdx};
+  gstruct.secCards=SEC_CARDS.map(function(a){return a.slice();});
+  saveGStruct();
+  rebuildAll(); goTo(secIdx);
+  toast('Card "'+title+'" added for all customers!','✓');
 }
 
 function renderCard(cid){
@@ -1410,25 +1505,22 @@ function renameCard(cid){
   const t=newTitle.trim();
   if(!t){toast('Name cannot be empty','⚠️');return;}
   c.title=t;
-  const el=document.getElementById('ctitle-'+cid);
+  var el=document.getElementById('ctitle-'+cid);
   if(el) el.textContent=t;
-  saveData(); toast('Section renamed','✓');
+  gstruct.cardTitles[cid]=t;
+  if(gstruct.newCards[cid]) gstruct.newCards[cid].title=t;
+  saveGStruct(); toast('Card renamed for all customers!','✓');
 }
 
 function deleteCard(cid){
-  const c=cards[cid]; if(!c) return;
-  if(!confirm(`Delete the entire "${c.title}" section and all its fields? This cannot be undone.`)) return;
-  // Remove from cards
-  delete cards[cid];
-  // Remove from SEC_CARDS
-  SEC_CARDS.forEach(arr=>{const i=arr.indexOf(cid);if(i>-1)arr.splice(i,1);});
-  // Remove DOM element
-  document.getElementById('card-'+cid)?.remove();
-  saveData(); toast('Section deleted','🗑');
+  var c=cards[cid]; if(!c) return;
+  if(!confirm('Hide "'+c.title+'" for all customers? Restore via Hidden Items.')) return;
+  gstruct.hiddenCards[cid]=true;
+  saveGStruct(); updateHiddenBtn(); rebuildAll(); toast('Card hidden for all customers','👁️');
 }
 
 function renderFields(cid){
-  return (cards[cid]?.fields||[]).map((f,fi)=>renderField(cid,fi,f)).join('');
+  return (cards[cid]?.fields||[]).map((f,fi)=>gstruct.hiddenFields[f.id]?'':renderField(cid,fi,f)).join('');
 }
 
 function refreshCard(cid){
@@ -1517,7 +1609,10 @@ function dzDrop(e,cid){
   if(cid===dragCid&&dest>dragFi)dest--;
   cards[cid].fields.splice(dest,0,moved);
   refreshCard(dragCid);if(cid!==dragCid)refreshCard(cid);
-  saveData();toast('Reordered!','↕');
+  [dragCid,cid].filter(function(v,i,a){return a.indexOf(v)===i;}).forEach(function(c){
+    gstruct.fieldOrder[c]=(cards[c]?.fields||[]).map(function(f){return f.id;});
+  });
+  saveGStruct(); toast('Reordered for all customers!','↕');
 }
 
 // ══════════════════════════════════════════════════
@@ -1631,24 +1726,32 @@ function saveField(){
     condVal:     (condFieldId&&condVal) ? condVal     : null,
   };
   if(!cards[mCid].fields) cards[mCid].fields=[];
-  if(mFi!==null){cards[mCid].fields[mFi]=f; toast('Field updated!','✓');}
-  else{cards[mCid].fields.push(f); toast('Field added!','✓');}
-  refreshCard(mCid);
-  evalBranching(mCid);
-  saveData(); closeFM();
+  if(mFi!==null){
+    cards[mCid].fields[mFi]=f;
+    // Save field definition globally
+    gstruct.fieldDefs[f.id]={lbl:f.lbl,type:f.type,hint:f.hint,ph:f.ph,opts:f.opts.slice(),condFieldId:f.condFieldId,condVal:f.condVal};
+    // Update in newFields if it lives there
+    if(gstruct.newFields[mCid]){
+      var ni=gstruct.newFields[mCid].findIndex(function(x){return x.id===f.id;});
+      if(ni>=0) gstruct.newFields[mCid][ni]=JSON.parse(JSON.stringify(f));
+    }
+    toast('Field updated for all customers!','✓');
+  } else {
+    cards[mCid].fields.push(f);
+    if(!gstruct.newFields[mCid]) gstruct.newFields[mCid]=[];
+    gstruct.newFields[mCid].push(JSON.parse(JSON.stringify(f)));
+    toast('Field added for all customers!','✓');
+  }
+  saveGStruct();
+  refreshCard(mCid); evalBranching(mCid); closeFM();
 }
 
 function delField(cid,fi){
-  if(!confirm('Delete this field?'))return;
-  const deletedId=cards[cid].fields[fi]?.id;
-  cards[cid].fields.splice(fi,1);
-  // Clean up any branches that pointed to the deleted field
-  if(deletedId){
-    cards[cid].fields.forEach(f=>{
-      if(f.condFieldId===deletedId){ f.condFieldId=null; f.condVal=null; }
-    });
-  }
-  refreshCard(cid); saveData(); toast('Field deleted','🗑');
+  if(!confirm('Hide this field for all customers? You can restore it via Hidden Items.'))return;
+  var fid=cards[cid].fields[fi]?.id; if(!fid) return;
+  gstruct.hiddenFields[fid]=true;
+  cards[cid].fields.forEach(function(f){ if(f.condFieldId===fid){f.condFieldId=null;f.condVal=null;} });
+  saveGStruct(); updateHiddenBtn(); refreshCard(cid); toast('Field hidden for all customers','👁️');
 }
 
 // ══════════════════════════════════════════════════
@@ -3097,5 +3200,18 @@ function hookPipelineLiveUpdates() {
   </div>
 </div>
 
+
+<!-- HIDDEN ITEMS MODAL -->
+<div class="ov" id="hiddenOv">
+  <div class="ov-bg" onclick="closeHiddenModal()"></div>
+  <div class="ov-box" style="width:500px;max-width:95vw;max-height:85vh;overflow-y:auto">
+    <div class="fm-hdr">
+      <div><h3>Hidden Items</h3><p>Restore fields, cards, or phases you previously hid.</p></div>
+      <button class="fm-x" onclick="closeHiddenModal()">✕</button>
+    </div>
+    <div class="fm-body" id="hiddenModalBody"></div>
+    <div class="fm-ftr"><button class="btn btn-gh" onclick="closeHiddenModal()">Close</button></div>
+  </div>
+</div>
 </body>
 </html>
