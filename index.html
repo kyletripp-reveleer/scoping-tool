@@ -459,7 +459,6 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
     <div class="ver-actions">
       <button class="btn btn-gh btn-sm" onclick="openVerModal()">⊕ New Customer</button>
       <button class="btn btn-gh btn-sm" onclick="auth(()=>openManageModal())">⚙ Manage</button>
-    <button class="btn btn-gh btn-sm" onclick="auth(()=>openSpModal())" id="spBtn">☁️ SharePoint</button>
     <button class="btn btn-gh btn-sm" onclick="auth(()=>openHiddenModal())" id="hiddenBtn" style="display:none">👁 Hidden Items</button>
       <button class="btn btn-pri btn-sm" onclick="exportVersion()">↓ Export Copy</button>
     </div>
@@ -621,31 +620,6 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 </div>
 
 <!-- TOAST -->
-<!-- SHAREPOINT SETTINGS MODAL -->
-<div class="ov" id="spOv">
-  <div class="ov-bg" onclick="closeSpModal()"></div>
-  <div class="ov-box" style="width:560px;max-width:95vw">
-    <div class="fm-hdr">
-      <div>
-        <h3>☁️ SharePoint Connection</h3>
-        <p>Paste your Power Automate flow URLs to enable shared storage.</p>
-      </div>
-      <button class="fm-x" onclick="closeSpModal()">✕</button>
-    </div>
-    <div class="fm-body">
-      <div class="ml">GET Flow URL <span style="font-size:9px;opacity:.6">(reads data from SharePoint)</span></div>
-      <input type="text" id="spGetInp" placeholder="https://prod-xx.westus.logic.azure.com/workflows/..." style="width:100%;margin-bottom:12px">
-      <div class="ml">SET Flow URL <span style="font-size:9px;opacity:.6">(writes data to SharePoint)</span></div>
-      <input type="text" id="spSetInp" placeholder="https://prod-xx.westus.logic.azure.com/workflows/..." style="width:100%;margin-bottom:12px">
-      <div id="spStatus" style="font-size:11px;color:var(--mu);margin-top:4px"></div>
-    </div>
-    <div class="fm-ftr">
-      <button class="btn btn-gh" onclick="clearSpConfig()">Clear / Disconnect</button>
-      <button class="btn btn-pri" onclick="saveSpConfig()">Save & Connect</button>
-    </div>
-  </div>
-</div>
-
 <!-- HIDDEN ITEMS MODAL -->
 <div class="ov" id="hiddenOv">
   <div class="ov-bg" onclick="closeHiddenModal()"></div>
@@ -668,14 +642,15 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 const PW = '522522';
 const SK = 'ci-v5';
 const VER_INDEX_KEY = 'ci-ver-index'; // stores [{id,name,created}]
-const HIDDEN_KEY = 'ci-hidden-global'; // global hidden flags (all customers)
+const HIDDEN_KEY    = 'ci-hidden-global';    // global hidden flags (all customers)
+const STRUCTURE_KEY = 'ci-structure-global'; // global form structure overrides
 
 // ── SharePoint / Power Automate storage URLs ──────────────────────────────
-// These are loaded dynamically from localStorage key 'ci-sp-config'
-// so they can be set via the Settings UI without editing this file.
-let SP_GET_URL = localStorage.getItem('ci-sp-get') || 'https://default044b1e3171a44846afc99671d32d99.6f.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/ad99f7e5d3f845efa22430b05dc9c615/triggers/manual/paths/invoke?api-version=1
+// Paste your Power Automate HTTP trigger URLs below to enable SharePoint sync.
+// Leave as-is to use local browser storage.
+const SP_GET_URL = 'https://default044b1e3171a44846afc99671d32d99.6f.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/ad99f7e5d3f845efa22430b05dc9c615/triggers/manual/paths/invoke?api-version=1
 ';
-let SP_SET_URL = localStorage.getItem('ci-sp-set') || 'https://default044b1e3171a44846afc99671d32d99.6f.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/391d343d02ef4d888983f9c351320192/triggers/manual/paths/invoke?api-version=1
+const SP_SET_URL = 'https://default044b1e3171a44846afc99671d32d99.6f.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/391d343d02ef4d888983f9c351320192/triggers/manual/paths/invoke?api-version=1
 ';
 // ─────────────────────────────────────────────────────────────────────────
 
@@ -771,23 +746,9 @@ async function createVersion(){
   // Save current state first
   await saveData();
 
-  // Always copy current form structure; strip answers so new customer starts blank
-  {
-    const snapshot = JSON.parse(JSON.stringify({cards, sdefs: SDEFS, secCards: SEC_CARDS}));
-    const allDefaults = Object.keys(defaultCards());
-    const deleted = allDefaults.filter(cid => !cards[cid]);
-    Object.keys(snapshot.cards).forEach(cid => {
-      (snapshot.cards[cid]?.fields || []).forEach(f => { delete f.val; });
-    });
-    try {
-      await store.set(verStorageKey(id), JSON.stringify({
-        cards: snapshot.cards,
-        deleted,
-        sdefs: snapshot.sdefs,
-        secCards: snapshot.secCards
-      }));
-    } catch(e){}
-  }
+  // New customer starts completely blank — no snapshot needed.
+  // loadData() will build from defaultCards() and apply global hidden flags.
+  // Nothing to pre-save; the key simply won't exist yet.
 
   verIndex.push({id, name, created: new Date().toISOString()});
   await saveVerIndex();
@@ -1052,7 +1013,16 @@ function defaultCards(){
 //  STATE
 // ══════════════════════════════════════════════════
 let cards = {};   // populated by loadData() — never pre-fill with defaults
-let hidden = { fields:{}, cards:{}, sections:{} }; // items hidden by user (persisted)
+let hidden    = { fields:{}, cards:{}, sections:{} }; // items hidden by user (persisted)
+let structure = {                                      // global form structure overrides
+  fields: {},       // { [fieldId]: field definition overrides }
+  newFields: {},    // { [cid]: [field, ...] } user-added fields
+  cards: {},        // { [cid]: { title } } card title overrides
+  newCards: {},     // { [cid]: { title, fields:[], secIdx } } user-added cards
+  sdefs: null,      // phase list (null = use defaults)
+  secCards: null,   // section map (null = use defaults)
+  fieldOrder: {},   // { [cid]: [fieldId,...] } drag-drop order
+};
 let curStep = 0;
 let authed = false;
 let pendingFn = null;
@@ -1089,17 +1059,15 @@ function closePin(){ document.getElementById('pinOv').classList.remove('on'); pe
 //  In browser: uses localStorage (persists locally).
 // ══════════════════════════════════════════════════
 const inClaude = typeof window.storage !== 'undefined' && typeof window.storage.get === 'function';
-function inSharePoint(){
-  return !inClaude &&
-    SP_GET_URL && SP_GET_URL !== 'PASTE_YOUR_GET_FLOW_URL_HERE' &&
-    SP_SET_URL && SP_SET_URL !== 'PASTE_YOUR_SET_FLOW_URL_HERE';
-}
+const inSharePoint = !inClaude &&
+  SP_GET_URL !== 'PASTE_YOUR_GET_FLOW_URL_HERE' &&
+  SP_SET_URL !== 'PASTE_YOUR_SET_FLOW_URL_HERE';
 
 const store = {
   async get(key){
     if(inClaude){
       try{ const r=await window.storage.get(key,true); return r?.value??null; }catch(e){ return null; }
-    } else if(inSharePoint()){
+    } else if(inSharePoint){
       try{
         const r = await fetch(SP_GET_URL, {
           method: 'POST',
@@ -1117,7 +1085,7 @@ const store = {
   async set(key,val){
     if(inClaude){
       await window.storage.set(key,val,true);
-    } else if(inSharePoint()){
+    } else if(inSharePoint){
       try{
         await fetch(SP_SET_URL, {
           method: 'POST',
@@ -1133,7 +1101,7 @@ const store = {
   async del(key){
     if(inClaude){
       try{ await window.storage.delete(key,true); }catch(e){}
-    } else if(inSharePoint()){
+    } else if(inSharePoint){
       try{
         await fetch(SP_SET_URL, {
           method: 'POST',
@@ -1166,21 +1134,102 @@ async function saveVerIndex(){
   try{ await store.set(VER_INDEX_KEY,JSON.stringify(verIndex)); }catch(e){}
 }
 
+async function loadStructure(){
+  try{
+    const raw = await store.get(STRUCTURE_KEY);
+    if(raw){
+      const s = JSON.parse(raw);
+      structure.fields    = s.fields    || {};
+      structure.newFields = s.newFields || {};
+      structure.cards     = s.cards     || {};
+      structure.newCards  = s.newCards  || {};
+      structure.sdefs     = s.sdefs     || null;
+      structure.secCards  = s.secCards  || null;
+      structure.fieldOrder= s.fieldOrder|| {};
+    }
+  }catch(e){ console.error('[loadStructure]',e); }
+}
+
+async function saveStructure(){
+  try{ await store.set(STRUCTURE_KEY, JSON.stringify(structure)); }catch(e){}
+}
+
+// Apply global structure overrides on top of a fresh defaultCards() snapshot.
+// Called from loadData() after cards is reset to defaultCards().
+function applyStructure(){
+  // 1. Apply field definition overrides (label, type, opts, hint, etc.)
+  Object.keys(structure.fields).forEach(fid => {
+    const override = structure.fields[fid];
+    Object.values(cards).forEach(card => {
+      const f = (card.fields||[]).find(x => x.id === fid);
+      if(f) Object.assign(f, override);
+    });
+  });
+
+  // 2. Apply field order overrides per card
+  Object.keys(structure.fieldOrder).forEach(cid => {
+    if(!cards[cid]) return;
+    const order = structure.fieldOrder[cid];
+    const fieldMap = {};
+    (cards[cid].fields||[]).forEach(f => { fieldMap[f.id] = f; });
+    // Also include any newFields for this card
+    (structure.newFields[cid]||[]).forEach(f => { fieldMap[f.id] = f; });
+    const ordered = [];
+    order.forEach(fid => { if(fieldMap[fid]) ordered.push(fieldMap[fid]); });
+    // Append any fields not in the order list (newly added to defaultCards since last reorder)
+    Object.values(fieldMap).forEach(f => { if(!order.includes(f.id)) ordered.push(f); });
+    cards[cid].fields = ordered;
+  });
+
+  // 3. Apply user-added fields (not in defaultCards)
+  Object.keys(structure.newFields).forEach(cid => {
+    if(!cards[cid]) return;
+    const existingIds = new Set((cards[cid].fields||[]).map(f=>f.id));
+    (structure.newFields[cid]||[]).forEach(f => {
+      if(!existingIds.has(f.id)) cards[cid].fields.push(f);
+    });
+  });
+
+  // 4. Apply card title overrides
+  Object.keys(structure.cards).forEach(cid => {
+    if(cards[cid] && structure.cards[cid].title) cards[cid].title = structure.cards[cid].title;
+  });
+
+  // 5. Apply user-added cards
+  Object.keys(structure.newCards).forEach(cid => {
+    if(!cards[cid]){
+      const nc = structure.newCards[cid];
+      cards[cid] = { title: nc.title, fields: nc.fields || [] };
+      // Add to SEC_CARDS if not already placed
+      const secIdx = nc.secIdx;
+      if(secIdx !== undefined && SEC_CARDS[secIdx] && !SEC_CARDS[secIdx].includes(cid)){
+        SEC_CARDS[secIdx].push(cid);
+      }
+    }
+  });
+
+  // 6. Apply phase/section overrides
+  if(structure.sdefs && structure.sdefs.length){
+    SDEFS.length = 0;
+    structure.sdefs.forEach(s => SDEFS.push(s));
+  }
+  if(structure.secCards && structure.secCards.length){
+    SEC_CARDS.length = 0;
+    structure.secCards.forEach(a => SEC_CARDS.push(a));
+  }
+}
+
 async function loadData(){
   try{
-    // Always build cards fresh from defaultCards() — structure is never saved.
+    // Always build cards fresh from defaultCards(), then apply global structure overrides.
     cards = JSON.parse(JSON.stringify(defaultCards()));
-    // Restore section layout if customized
+    applyStructure(); // apply global field edits, new fields, card renames, phase changes
+
+    // Restore per-customer answers
     const raw = await store.get(verStorageKey(curVerId));
     const saved = raw ? JSON.parse(raw) : null;
 
     if(saved){
-      if(Array.isArray(saved.sdefs) && saved.sdefs.length) SDEFS = saved.sdefs;
-      if(Array.isArray(saved.secCards) && saved.secCards.length){
-        SEC_CARDS.length = 0;
-        saved.secCards.forEach(arr => SEC_CARDS.push(arr));
-      }
-
       // Pour saved answers onto fields by matching field ID.
       const vals = saved.vals || {};
 
@@ -1200,7 +1249,7 @@ async function loadData(){
       });
     }
 
-    setSync('ok', inClaude ? 'Synced' : inSharePoint() ? 'Saved to SharePoint' : 'Saved locally');
+    setSync('ok', inClaude ? 'Synced' : inSharePoint ? 'Saved to SharePoint' : 'Saved locally');
   }catch(e){ console.error('[loadData]', e); setSync('ok','Ready'); }
 }
 
@@ -1222,7 +1271,7 @@ async function saveData(){
       sdefs:    SDEFS,
       secCards: SEC_CARDS,
     }));
-    setSync('ok', inClaude ? 'Saved · shared' : inSharePoint() ? 'Saved to SharePoint' : 'Saved locally');
+    setSync('ok', inClaude ? 'Saved · shared' : inSharePoint ? 'Saved to SharePoint' : 'Saved locally');
     setTimeout(()=>setSync('ok', inClaude ? 'Synced' : inSharePoint ? 'SharePoint ✓' : 'Saved locally'),2200);
   }catch(e){ setSync('er','Save failed'); toast('Could not save','⚠️'); }
 }
@@ -1308,6 +1357,7 @@ async function init(){
   try{
     setSync('sy','Loading…');
     await loadVerIndex();
+    await loadStructure();
     await loadHidden();
     await loadData();
   } catch(e){ console.error('[init] load error:', e); }
@@ -1329,8 +1379,7 @@ async function init(){
   try{ hookPipelineLiveUpdates(); } catch(e){ console.error('[init] pipeHook:', e); }
 
   updateHiddenBtn();
-  updateSpBtn();
-  setSync('ok', inClaude ? 'Synced' : inSharePoint() ? 'Saved to SharePoint' : 'Saved locally');
+  setSync('ok', inClaude ? 'Synced' : inSharePoint ? 'Saved to SharePoint' : 'Saved locally');
 }
 
 // ══════════════════════════════════════════════════
@@ -1457,7 +1506,10 @@ function saveSecModal(){
 
   closeSecModal();
   rebuildAll();
-  saveData();
+  // Save phase structure globally
+  structure.sdefs    = SDEFS.map(s=>({...s}));
+  structure.secCards = SEC_CARDS.map(a=>[...a]);
+  saveStructure();
 }
 
 function deleteSection(idx){
@@ -1494,11 +1546,13 @@ function promptAddCard(secIdx){
   // Add to this section's card list
   if(!SEC_CARDS[secIdx]) SEC_CARDS[secIdx] = [];
   SEC_CARDS[secIdx].push(cid);
+  // Save new card globally so it appears for all customers
+  structure.newCards[cid] = { title, fields: [], secIdx };
+  structure.secCards = SEC_CARDS.map(a=>[...a]);
   rebuildAll();
-  // Navigate to the section that got the card
   goTo(secIdx);
-  saveData();
-  toast(`Card "${title}" added`, '✓');
+  saveStructure();
+  toast('Card "' + title + '" added — visible to all customers!', '✓');
 }
 
 function renderCard(cid){
@@ -1530,7 +1584,11 @@ function renameCard(cid){
   c.title=t;
   const el=document.getElementById('ctitle-'+cid);
   if(el) el.textContent=t;
-  saveData(); toast('Section renamed','✓');
+  // Save title override globally
+  if(!structure.cards[cid]) structure.cards[cid]={};
+  structure.cards[cid].title = t;
+  if(structure.newCards[cid]) structure.newCards[cid].title = t;
+  saveStructure(); toast('Card renamed — applies to all customers!','✓');
 }
 
 function deleteCard(cid){
@@ -1630,7 +1688,11 @@ function dzDrop(e,cid){
   if(cid===dragCid&&dest>dragFi)dest--;
   cards[cid].fields.splice(dest,0,moved);
   refreshCard(dragCid);if(cid!==dragCid)refreshCard(cid);
-  saveData();toast('Reordered!','↕');
+  // Save field order globally
+  [dragCid, cid].filter((v,i,a)=>a.indexOf(v)===i).forEach(c=>{
+    structure.fieldOrder[c] = (cards[c]?.fields||[]).map(f=>f.id);
+  });
+  saveStructure(); toast('Reordered — order applies to all customers!','↕');
 }
 
 // ══════════════════════════════════════════════════
@@ -1744,11 +1806,27 @@ function saveField(){
     condVal:     (condFieldId&&condVal) ? condVal     : null,
   };
   if(!cards[mCid].fields) cards[mCid].fields=[];
-  if(mFi!==null){cards[mCid].fields[mFi]=f; toast('Field updated!','✓');}
-  else{cards[mCid].fields.push(f); toast('Field added!','✓');}
+  if(mFi!==null){
+    cards[mCid].fields[mFi]=f;
+    // Save field definition override globally (all customers see the change)
+    structure.fields[f.id] = { lbl:f.lbl, type:f.type, hint:f.hint, ph:f.ph, opts:[...f.opts],
+      condFieldId:f.condFieldId, condVal:f.condVal };
+    // If this field is in newFields, update it there too
+    if(structure.newFields[mCid]){
+      const ni = structure.newFields[mCid].findIndex(x=>x.id===f.id);
+      if(ni>=0) structure.newFields[mCid][ni] = {...f};
+    }
+    toast('Field updated — change applies to all customers!','✓');
+  } else {
+    cards[mCid].fields.push(f);
+    // Save new field to global newFields
+    if(!structure.newFields[mCid]) structure.newFields[mCid]=[];
+    structure.newFields[mCid].push({...f});
+    toast('Field added — visible to all customers!','✓');
+  }
   refreshCard(mCid);
   evalBranching(mCid);
-  saveData(); closeFM();
+  saveStructure(); closeFM();
 }
 
 function delField(cid,fi){
@@ -3116,89 +3194,8 @@ function hookPipelineLiveUpdates() {
 
 
 // ══════════════════════════════════════════════════
-//  SHAREPOINT SETTINGS
-// ══════════════════════════════════════════════════
-function openSpModal(){
-  document.getElementById('spGetInp').value = SP_GET_URL !== 'PASTE_YOUR_GET_FLOW_URL_HERE' ? SP_GET_URL : '';
-  document.getElementById('spSetInp').value = SP_SET_URL !== 'PASTE_YOUR_SET_FLOW_URL_HERE' ? SP_SET_URL : '';
-  const connected = inSharePoint();
-  document.getElementById('spStatus').textContent = connected
-    ? '✓ Currently connected to SharePoint'
-    : 'Not connected — using local browser storage';
-  document.getElementById('spStatus').style.color = connected ? 'var(--gn)' : 'var(--mu)';
-  document.getElementById('spOv').classList.add('on');
-}
-function closeSpModal(){ document.getElementById('spOv').classList.remove('on'); }
-
-async function saveSpConfig(){
-  const get = document.getElementById('spGetInp').value.trim();
-  const set = document.getElementById('spSetInp').value.trim();
-  if(!get || !set){
-    document.getElementById('spStatus').textContent = '⚠ Both URLs are required.';
-    document.getElementById('spStatus').style.color = 'var(--rd)';
-    return;
-  }
-  SP_GET_URL = get;
-  SP_SET_URL = set;
-  localStorage.setItem('ci-sp-get', get);
-  localStorage.setItem('ci-sp-set', set);
-  document.getElementById('spStatus').textContent = '✓ Connected! Testing connection…';
-  document.getElementById('spStatus').style.color = 'var(--gn)';
-  // Test the connection with a get
-  try{
-    const r = await fetch(SP_GET_URL, {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({action:'get', key:'ci-sp-test'})
-    });
-    if(r.ok){
-      document.getElementById('spStatus').textContent = '✓ Connection successful! Saving data to SharePoint.';
-      toast('SharePoint connected ✓','☁️');
-      // Re-save current data to SharePoint now that it's connected
-      await saveData();
-      await saveHidden();
-      await saveVerIndex();
-      setSync('ok', 'Saved to SharePoint');
-    } else {
-      throw new Error('HTTP ' + r.status);
-    }
-  } catch(e){
-    document.getElementById('spStatus').textContent = '⚠ Connection failed: ' + e.message + '. Check your flow URL.';
-    document.getElementById('spStatus').style.color = 'var(--rd)';
-  }
-}
-
-function clearSpConfig(){
-  if(!confirm('Disconnect from SharePoint? Data will be saved locally only.')) return;
-  SP_GET_URL = 'PASTE_YOUR_GET_FLOW_URL_HERE';
-  SP_SET_URL = 'PASTE_YOUR_SET_FLOW_URL_HERE';
-  localStorage.removeItem('ci-sp-get');
-  localStorage.removeItem('ci-sp-set');
-  document.getElementById('spGetInp').value = '';
-  document.getElementById('spSetInp').value = '';
-  document.getElementById('spStatus').textContent = 'Disconnected — using local storage.';
-  document.getElementById('spStatus').style.color = 'var(--mu)';
-  setSync('ok','Saved locally');
-  toast('SharePoint disconnected','☁️');
-}
-
-// ══════════════════════════════════════════════════
 //  HIDDEN ITEMS MANAGER
 // ══════════════════════════════════════════════════
-
-function updateSpBtn(){
-  const btn = document.getElementById('spBtn');
-  if(!btn) return;
-  if(inSharePoint()){
-    btn.textContent = '☁️ SharePoint ✓';
-    btn.style.color = 'var(--gn)';
-    btn.style.borderColor = 'rgba(22,163,74,.4)';
-  } else {
-    btn.textContent = '☁️ SharePoint';
-    btn.style.color = '';
-    btn.style.borderColor = '';
-  }
-}
 
 function updateHiddenBtn(){
   const anyHidden = Object.keys(hidden.fields).length > 0 ||
