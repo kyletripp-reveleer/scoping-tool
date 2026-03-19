@@ -1223,7 +1223,7 @@ async function loadData(){
   try{
     // Always build cards fresh from defaultCards(), then apply global structure overrides.
     cards = JSON.parse(JSON.stringify(defaultCards()));
-    applyStructure(); // apply global field edits, new fields, card renames, phase changes
+    try{ applyStructure(); }catch(e){ console.error('[applyStructure]',e); } // apply global overrides
 
     // Restore per-customer answers
     const raw = await store.get(verStorageKey(curVerId));
@@ -1348,18 +1348,23 @@ async function resetForm() {
 }
 
 async function init(){
-  // Safety net: always hide loader after 8 seconds no matter what
+  // Hide loader after 3s max regardless of what happens
   const loaderTimeout = setTimeout(()=>{
     document.getElementById('ldr').classList.add('off');
     setSync('ok','Ready');
-  }, 8000);
+  }, 3000);
 
   try{
     setSync('sy','Loading…');
-    await loadVerIndex();
-    await loadStructure();
-    await loadHidden();
-    await loadData();
+    await Promise.race([
+      (async()=>{
+        await loadVerIndex();
+        await loadStructure();
+        await loadHidden();
+        await loadData();
+      })(),
+      new Promise((_,rej)=>setTimeout(()=>rej(new Error('load timeout')),5000))
+    ]);
   } catch(e){ console.error('[init] load error:', e); }
 
   // Always hide loader and render — even if load failed
@@ -1393,6 +1398,11 @@ function goTo(n){ document.getElementById('nb'+curStep)?.classList.remove('on');
 //  BUILD SECTIONS
 // ══════════════════════════════════════════════════
 function buildSections(){
+  // Guard: if cards is empty (load failed), fill with defaults so UI doesn't crash
+  if(Object.keys(cards).length === 0){
+    const d = defaultCards();
+    Object.keys(d).forEach(cid => { cards[cid] = d[cid]; });
+  }
   const summaryIdx = SDEFS.length - 1;
   // Filter out hidden sections before rendering (but keep summary always)
   const visibleSDEFS = SDEFS.filter((s,i) => i === summaryIdx || !hidden.sections[s.id]);
