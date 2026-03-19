@@ -669,8 +669,7 @@ async function switchVersion(id){
   // Save current version first
   await saveData();
   curVerId = id;
-  // Start from empty — loadData will restore saved cards or fall back to defaults
-  cards = {};
+  // Reset section layout — loadData will rebuild cards from defaultCards() and restore answers
   SDEFS = [
     {id:'s0',ico:'🏥',ttl:'Customer Profile',       sub:'Identify the customer type and buying organization'},
     {id:'s1',ico:'⚙️',ttl:'Platform Configuration', sub:'Lines of business, members, risk & care gaps'},
@@ -690,7 +689,6 @@ async function switchVersion(id){
   buildNav();
   updProg();
   Object.keys(cards).forEach(cid=>{ attachBranchListeners(cid); evalBranching(cid); });
-  migrateValFromDom();
   await loadPipeData();
   if (currentMode === 'pipeline') buildPipeline();
   toast(`Switched to: ${verIndex.find(v=>v.id===id)?.name||id}`,'📋');
@@ -1108,76 +1106,61 @@ async function saveVerIndex(){
 
 async function loadData(){
   try{
-    const val=await store.get(verStorageKey(curVerId));
-    const saved = val ? JSON.parse(val) : null;
+    // Always build cards fresh from defaultCards() — structure is never saved.
+    cards = JSON.parse(JSON.stringify(defaultCards()));
 
-    // Restore saved section/phase definitions if present
+    // Restore section layout if customized
+    const raw = await store.get(verStorageKey(curVerId));
+    const saved = raw ? JSON.parse(raw) : null;
+
     if(saved){
       if(Array.isArray(saved.sdefs) && saved.sdefs.length) SDEFS = saved.sdefs;
       if(Array.isArray(saved.secCards) && saved.secCards.length){
         SEC_CARDS.length = 0;
         saved.secCards.forEach(arr => SEC_CARDS.push(arr));
       }
-      if(saved.cards){
-        Object.keys(saved.cards).forEach(cid=>{
-          if(!cards[cid]) cards[cid] = {title: saved.cards[cid].title || cid, fields:[]};
-          cards[cid].fields=saved.cards[cid].fields;
-          if(saved.cards[cid].title) cards[cid].title=saved.cards[cid].title;
-          if(Array.isArray(saved.cards[cid].deletedFieldIds)) cards[cid].deletedFieldIds=saved.cards[cid].deletedFieldIds;
+
+      // Pour saved answers onto fields by matching field ID.
+      // Fields that no longer exist in defaultCards() are silently ignored.
+      // Fields added to defaultCards() since last save appear blank — correct.
+      const vals = saved.vals || {};
+
+      // Legacy support: if old format (saved.cards), extract vals from it
+      if(!saved.vals && saved.cards){
+        Object.values(saved.cards).forEach(card => {
+          (card.fields || []).forEach(f => {
+            if(f.id && f.val !== undefined && f.val !== null && f.val !== '') vals[f.id] = f.val;
+          });
         });
       }
-      if(Array.isArray(saved.deleted)){
-        saved.deleted.forEach(cid=>{
-          delete cards[cid];
-          SEC_CARDS.forEach(arr=>{const i=arr.indexOf(cid);if(i>-1)arr.splice(i,1);});
+
+      Object.values(cards).forEach(card => {
+        (card.fields || []).forEach(f => {
+          if(vals[f.id] !== undefined) f.val = vals[f.id];
         });
-      }
+      });
     }
 
-    // ── Always fill in any cards absent from save with fresh defaults ──
-    // This runs whether or not there was saved data, so cards is never empty.
-    // Cards present in save → fields are authoritative, never overwritten.
-    // Cards absent from save → user never visited, use fresh defaults.
-    const defaults = defaultCards();
-    const cidSectionHint = {
-      'c0-org':'Customer Profile',
-      'c1-platform':'Platform Configuration','c1-lob':'Platform Configuration','c1-risk':'Platform Configuration','c1-core':'Platform Configuration',
-      'c2-workflows':'Workflow Configuration','c2-poc':'Workflow Configuration',
-      'c3-native':'POC Integration','c3-uni':'POC Integration',
-      'c4-data':'Data Sources',
-      'c5-coding':'Coding Services','c5-notes':'Coding Services',
-    };
-    const defaultSecCards = [['c0-org'],['c1-platform','c1-lob','c1-risk'],['c2-workflows','c2-poc','c3-native','c3-uni'],[],['c4-data'],['c5-coding','c5-notes'],['c1-core'],[]];
-    Object.keys(defaults).forEach(cid => {
-      if (!cards[cid]) {
-        cards[cid] = JSON.parse(JSON.stringify(defaults[cid]));
-      }
-      const alreadyPlaced = SEC_CARDS.some(arr => arr.includes(cid));
-      if (!alreadyPlaced) {
-        const hint = cidSectionHint[cid] || '';
-        let targetSi = -1;
-        if (hint) targetSi = SDEFS.findIndex(s => s.ttl.toLowerCase().includes(hint.toLowerCase().split(' ')[0]));
-        if (targetSi === -1) defaultSecCards.forEach((arr, si) => { if (arr.includes(cid) && si < SEC_CARDS.length) targetSi = si; });
-        if (targetSi >= 0 && SEC_CARDS[targetSi]) SEC_CARDS[targetSi].push(cid);
-      }
-    });
-
     setSync('ok', inClaude ? 'Synced' : inSharePoint ? 'Saved to SharePoint' : 'Saved locally');
-  }catch(e){ setSync('ok','Ready'); }
+  }catch(e){ console.error('[loadData]', e); setSync('ok','Ready'); }
 }
 
 async function saveData(){
   setSync('sy','Saving…');
   try{
-    const allDefaults=Object.keys(defaultCards());
-    const deleted=allDefaults.filter(cid=>!cards[cid]);
-    const cardsPayload={};
-    Object.keys(cards).forEach(cid=>{
-      cardsPayload[cid]={title:cards[cid].title,fields:cards[cid].fields,deletedFieldIds:cards[cid].deletedFieldIds||[]};
+    // Save ONLY field values (answers), keyed by field ID.
+    // Field structure always comes from defaultCards() in the HTML — never persisted.
+    const vals = {};
+    Object.values(cards).forEach(card => {
+      (card.fields || []).forEach(f => {
+        if(f.val !== undefined && f.val !== null && f.val !== '' && !(Array.isArray(f.val) && f.val.length === 0)){
+          vals[f.id] = f.val;
+        }
+      });
     });
-    await store.set(verStorageKey(curVerId),JSON.stringify({
-      cards:cardsPayload, deleted,
-      sdefs: SDEFS,
+    await store.set(verStorageKey(curVerId), JSON.stringify({
+      vals,
+      sdefs:    SDEFS,
       secCards: SEC_CARDS,
     }));
     setSync('ok', inClaude ? 'Saved · shared' : inSharePoint ? 'Saved to SharePoint' : 'Saved locally');
@@ -1257,20 +1240,35 @@ async function resetForm() {
 }
 
 async function init(){
-  setSync('sy','Loading…');
-  await loadVerIndex();
-  await loadData();
+  // Safety net: always hide loader after 8 seconds no matter what
+  const loaderTimeout = setTimeout(()=>{
+    document.getElementById('ldr').classList.add('off');
+    setSync('ok','Ready');
+  }, 8000);
+
+  try{
+    setSync('sy','Loading…');
+    await loadVerIndex();
+    await loadData();
+  } catch(e){ console.error('[init] load error:', e); }
+
+  // Always hide loader and render — even if load failed
+  clearTimeout(loaderTimeout);
   document.getElementById('ldr').classList.add('off');
-  buildVerSelect();
-  buildNav(); buildSections(); updProg();
-  Object.keys(cards).forEach(cid=>{
-    attachBranchListeners(cid);
-    evalBranching(cid);
-  });
-  migrateValFromDom();
-  await loadPipeGlobal();
-  await loadPipeData();
-  hookPipelineLiveUpdates();
+
+  try{ buildVerSelect(); } catch(e){ console.error('[init] buildVerSelect:', e); }
+  try{ buildNav(); buildSections(); updProg(); } catch(e){ console.error('[init] buildSections:', e); }
+  try{
+    Object.keys(cards).forEach(cid=>{
+      attachBranchListeners(cid);
+      evalBranching(cid);
+    });
+  } catch(e){ console.error('[init] branching:', e); }
+  try{ await loadPipeGlobal(); } catch(e){ console.error('[init] pipeGlobal:', e); }
+  try{ await loadPipeData(); } catch(e){ console.error('[init] pipeData:', e); }
+  try{ hookPipelineLiveUpdates(); } catch(e){ console.error('[init] pipeHook:', e); }
+
+  setSync('ok', inClaude ? 'Synced' : inSharePoint ? 'Saved to SharePoint' : 'Saved locally');
 }
 
 // ══════════════════════════════════════════════════
@@ -1689,7 +1687,7 @@ function saveField(){
 }
 
 function delField(cid,fi){
-  if(!confirm('Delete this field?'))return;
+  if(!confirm('Delete this field? This removes it from the current view. To permanently remove it for all customers, ask your admin to remove it from the HTML source file.'))return;
   const deletedId=cards[cid].fields[fi]?.id;
   cards[cid].fields.splice(fi,1);
   if(deletedId){
@@ -3061,7 +3059,7 @@ function hookPipelineLiveUpdates() {
 }
 
 
-init();
+init().catch(e=>{ console.error('[init] fatal:', e); document.getElementById('ldr').classList.add('off'); setSync('ok','Ready'); });
 </script>
 
 <!-- TASK EDIT MODAL -->
