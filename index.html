@@ -1040,31 +1040,61 @@ function closePin(){ document.getElementById('pinOv').classList.remove('on'); pe
 //  In Claude: uses window.storage (shared across users).
 //  In browser: uses localStorage (persists locally).
 // ══════════════════════════════════════════════════
+// ══════════════════════════════════════════════════
+//  SHAREPOINT STORAGE — configure these two Power Automate HTTP URLs
+//  to enable shared storage across all users on GitHub Pages.
+//  Leave blank to use localStorage (single-user, browser-only).
+//
+//  HOW TO SET UP (one-time, ~15 minutes):
+//  1. Go to make.powerautomate.com
+//  2. Create flow: "When HTTP request received" trigger
+//     GET flow: reads item from SharePoint list by key, returns {value}
+//     POST flow: upserts item in SharePoint list (key + value columns)
+//  3. Paste your HTTP trigger URLs below:
+// ══════════════════════════════════════════════════
+const SP_GET_URL = 'https://default044b1e3171a44846afc99671d32d99.6f.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/ad99f7e5d3f845efa22430b05dc9c615/triggers/manual/paths/invoke?api-version=1
+';  // GET flow URL  — receives ?key=xxx, returns {value:'...'}
+const SP_SET_URL = 'https://default044b1e3171a44846afc99671d32d99.6f.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/391d343d02ef4d888983f9c351320192/triggers/manual/paths/invoke?api-version=1
+';  // POST flow URL — receives {key, value} in body
+
 const inClaude = typeof window.storage !== 'undefined' && typeof window.storage.get === 'function';
+const useSharePoint = !!(SP_GET_URL && SP_SET_URL);
 
 const store = {
   async get(key){
     if(inClaude){
       try{ const r=await window.storage.get(key,true); return r?.value??null; }catch(e){ return null; }
-    } else {
-      return localStorage.getItem(key);
     }
+    if(useSharePoint){
+      try{
+        const r = await fetch(SP_GET_URL + '?key=' + encodeURIComponent(key));
+        if(!r.ok) return localStorage.getItem(key); // fallback
+        const d = await r.json();
+        return d.value ?? null;
+      }catch(e){ return localStorage.getItem(key); }
+    }
+    return localStorage.getItem(key);
   },
   async set(key,val){
-    if(inClaude){
-      await window.storage.set(key,val,true);
-    } else {
-      localStorage.setItem(key,val);
+    if(inClaude){ await window.storage.set(key,val,true); return; }
+    if(useSharePoint){
+      try{
+        await fetch(SP_SET_URL, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({key,value:val})});
+      }catch(e){}
     }
+    localStorage.setItem(key,val); // always keep local copy
   },
   async del(key){
-    if(inClaude){
-      try{ await window.storage.delete(key,true); }catch(e){}
-    } else {
-      localStorage.removeItem(key);
-    }
+    if(inClaude){ try{ await window.storage.delete(key,true); }catch(e){} return; }
+    localStorage.removeItem(key);
   }
 };
+
+function getSyncLabel(){
+  if(inClaude) return 'Synced';
+  if(useSharePoint) return 'Saved · SharePoint';
+  return 'Saved locally';
+}
 
 function setSync(s,l){
   const p=document.getElementById('syncPill');
@@ -1076,80 +1106,43 @@ function setSync(s,l){
 
 async function loadData(){
   try{
-    const val=await store.get(verStorageKey(curVerId));
-    if(val){
-      const saved=JSON.parse(val);
-      // Restore section/phase definitions
-      if(Array.isArray(saved.sdefs) && saved.sdefs.length) SDEFS = saved.sdefs;
-      if(Array.isArray(saved.secCards) && saved.secCards.length){
-        SEC_CARDS.length = 0;
-        saved.secCards.forEach(arr => SEC_CARDS.push(arr));
-      }
-      if(saved.cards){
-        Object.keys(saved.cards).forEach(cid=>{
-          if(!cards[cid]) cards[cid] = {title: saved.cards[cid].title || cid, fields:[]};
-          cards[cid].fields=saved.cards[cid].fields;
-          if(saved.cards[cid].title) cards[cid].title=saved.cards[cid].title;
+    cards = defaultCards();
+    applyGStruct();
+    var raw = await store.get(verStorageKey(curVerId));
+    if(raw){
+      var saved = JSON.parse(raw);
+      var vals = saved.vals || {};
+      // Legacy: extract vals from old cards format
+      if(!saved.vals && saved.cards){
+        Object.values(saved.cards).forEach(function(card){
+          (card.fields||[]).forEach(function(f){
+            if(f.id && f.val!==undefined && f.val!==null && f.val!=='') vals[f.id]=f.val;
+          });
         });
       }
-      if(Array.isArray(saved.deleted)){
-        saved.deleted.forEach(cid=>{
-          delete cards[cid];
-          SEC_CARDS.forEach(arr=>{const i=arr.indexOf(cid);if(i>-1)arr.splice(i,1);});
+      Object.values(cards).forEach(function(card){
+        (card.fields||[]).forEach(function(f){
+          if(vals[f.id]!==undefined) f.val=vals[f.id];
         });
-      }
-      // ── Merge any new builtin cards added since this snapshot was saved ──
-      const defaults = defaultCards();
-      // Map of cid → preferred section title (for fuzzy matching against saved SDEFS)
-      const cidSectionHint = {
-        'c0-type':'Customer Profile','c0-org':'Customer Profile',
-        'c1-platform':'Platform Configuration','c1-lob':'Platform Configuration','c1-risk':'Platform Configuration','c1-core':'Platform Configuration',
-        'c2-workflows':'Workflow Configuration','c2-poc':'Workflow Configuration',
-        'c3-native':'POC Integration','c3-uni':'POC Integration',
-        'c4-data':'Data Sources',
-        'c5-coding':'Coding Services','c5-notes':'Coding Services',
-      };
-      const defaultSecCards = [['c0-type','c0-org'],['c1-platform','c1-lob','c1-risk'],['c2-workflows','c2-poc','c3-native','c3-uni'],[],['c4-data'],['c5-coding','c5-notes'],['c1-core'],[]];
-      Object.keys(defaults).forEach(cid => {
-        // Add missing card to cards object
-        if (!cards[cid]) cards[cid] = defaults[cid];
-        // Add to SEC_CARDS if not already present anywhere
-        const alreadyPlaced = SEC_CARDS.some(arr => arr.includes(cid));
-        if (!alreadyPlaced) {
-          // Try to find section by title hint first
-          const hint = cidSectionHint[cid] || '';
-          let targetSi = -1;
-          if (hint) {
-            targetSi = SDEFS.findIndex(s => s.ttl.toLowerCase().includes(hint.toLowerCase().split(' ')[0]));
-          }
-          // Fallback: use default section index
-          if (targetSi === -1) {
-            defaultSecCards.forEach((arr, si) => { if (arr.includes(cid) && si < SEC_CARDS.length) targetSi = si; });
-          }
-          if (targetSi >= 0 && SEC_CARDS[targetSi]) SEC_CARDS[targetSi].push(cid);
-        }
       });
     }
-    setSync('ok', inClaude ? 'Synced' : 'Saved locally');
-  }catch(e){ setSync('ok','Ready'); }
+    setSync('ok', getSyncLabel());
+  }catch(e){ console.error('[loadData]',e); setSync('ok','Ready'); }
 }
 
 async function saveData(){
   setSync('sy','Saving…');
   try{
-    const allDefaults=Object.keys(defaultCards());
-    const deleted=allDefaults.filter(cid=>!cards[cid]);
-    const cardsPayload={};
-    Object.keys(cards).forEach(cid=>{
-      cardsPayload[cid]={title:cards[cid].title,fields:cards[cid].fields};
+    var vals={};
+    Object.values(cards).forEach(function(card){
+      (card.fields||[]).forEach(function(f){
+        if(f.val!==undefined && f.val!==null && f.val!=='' && !(Array.isArray(f.val)&&f.val.length===0))
+          vals[f.id]=f.val;
+      });
     });
-    await store.set(verStorageKey(curVerId),JSON.stringify({
-      cards:cardsPayload, deleted,
-      sdefs: SDEFS,
-      secCards: SEC_CARDS,
-    }));
-    setSync('ok', inClaude ? 'Saved · shared' : 'Saved locally');
-    setTimeout(()=>setSync('ok', inClaude ? 'Synced' : 'Saved locally'),2200);
+    await store.set(verStorageKey(curVerId), JSON.stringify({vals:vals}));
+    setSync('ok', getSyncLabel());
+    setTimeout(function(){ setSync('ok', getSyncLabel()); }, 2200);
   }catch(e){ setSync('er','Save failed'); toast('Could not save','⚠️'); }
 }
 
@@ -1224,9 +1217,107 @@ async function resetForm() {
   toast('Form reset ✓', '↺');
 }
 
+
+// ══════════════════════════════════════════════════
+//  GLOBAL STRUCTURE — syncs form edits across ALL customers
+// ══════════════════════════════════════════════════
+let gstruct = {
+  fieldDefs:{}, fieldOrder:{}, hiddenFields:{}, hiddenCards:{},
+  hiddenSections:{}, cardTitles:{}, newFields:{}, newCards:{},
+  sdefs:null, secCards:null
+};
+const GLOBAL_STRUCT_KEY = 'ci-global-struct';
+
+function saveGStruct(){
+  try{ localStorage.setItem(GLOBAL_STRUCT_KEY, JSON.stringify(gstruct)); }catch(e){}
+}
+function loadGStruct(){
+  try{
+    var raw = localStorage.getItem(GLOBAL_STRUCT_KEY);
+    if(raw){
+      var s = JSON.parse(raw);
+      gstruct.fieldDefs      = s.fieldDefs      || {};
+      gstruct.fieldOrder     = s.fieldOrder     || {};
+      gstruct.hiddenFields   = s.hiddenFields   || {};
+      gstruct.hiddenCards    = s.hiddenCards    || {};
+      gstruct.hiddenSections = s.hiddenSections || {};
+      gstruct.cardTitles     = s.cardTitles     || {};
+      gstruct.newFields      = s.newFields      || {};
+      gstruct.newCards       = s.newCards       || {};
+      gstruct.sdefs          = s.sdefs          || null;
+      gstruct.secCards       = s.secCards       || null;
+    }
+  }catch(e){ console.error('[loadGStruct]',e); }
+}
+function applyGStruct(){
+  try{
+    Object.keys(gstruct.fieldDefs).forEach(function(fid){
+      var ov=gstruct.fieldDefs[fid];
+      Object.values(cards).forEach(function(card){
+        var f=(card.fields||[]).find(function(x){return x.id===fid;});
+        if(f) Object.assign(f,ov);
+      });
+    });
+    Object.keys(gstruct.cardTitles).forEach(function(cid){
+      if(cards[cid]) cards[cid].title=gstruct.cardTitles[cid];
+    });
+    Object.keys(gstruct.newFields).forEach(function(cid){
+      if(!cards[cid]) return;
+      var ex=new Set((cards[cid].fields||[]).map(function(f){return f.id;}));
+      (gstruct.newFields[cid]||[]).forEach(function(f){
+        if(!ex.has(f.id)) cards[cid].fields.push(JSON.parse(JSON.stringify(f)));
+      });
+    });
+    Object.keys(gstruct.fieldOrder).forEach(function(cid){
+      if(!cards[cid]) return;
+      var order=gstruct.fieldOrder[cid], map={};
+      (cards[cid].fields||[]).forEach(function(f){map[f.id]=f;});
+      var ordered=[];
+      order.forEach(function(fid){if(map[fid])ordered.push(map[fid]);});
+      (cards[cid].fields||[]).forEach(function(f){if(!order.includes(f.id))ordered.push(f);});
+      cards[cid].fields=ordered;
+    });
+    Object.keys(gstruct.newCards).forEach(function(cid){
+      if(!cards[cid]){
+        var nc=gstruct.newCards[cid];
+        cards[cid]={title:nc.title,fields:(nc.fields||[]).map(function(f){return JSON.parse(JSON.stringify(f));})};
+        var si=nc.secIdx;
+        if(si!==undefined&&SEC_CARDS[si]&&!SEC_CARDS[si].includes(cid)) SEC_CARDS[si].push(cid);
+      }
+    });
+    if(gstruct.sdefs&&gstruct.sdefs.length){
+      SDEFS.length=0; gstruct.sdefs.forEach(function(s){SDEFS.push(Object.assign({},s));});
+    }
+    if(gstruct.secCards&&gstruct.secCards.length){
+      SEC_CARDS.length=0; gstruct.secCards.forEach(function(a){SEC_CARDS.push(a.slice());});
+    }
+  }catch(e){ console.error('[applyGStruct]',e); }
+}
+function updateHiddenBtn(){
+  var any=Object.keys(gstruct.hiddenFields).length||Object.keys(gstruct.hiddenCards).length||Object.keys(gstruct.hiddenSections).length;
+  var btn=document.getElementById('hiddenBtn'); if(btn) btn.style.display=any?'':'none';
+}
+function openHiddenModal(){ renderHiddenModal(); document.getElementById('hiddenOv').classList.add('on'); }
+function closeHiddenModal(){ document.getElementById('hiddenOv').classList.remove('on'); }
+function renderHiddenModal(){
+  var defs=defaultCards(), html='';
+  var hs=SDEFS.filter(function(s){return gstruct.hiddenSections[s.id];});
+  if(hs.length){ html+='<div class="ml">Hidden Phases</div>'; hs.forEach(function(s){ html+='<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--s2);border:1px solid var(--bd);border-radius:7px;margin-bottom:8px"><span>'+esc(s.ico)+' <strong>'+esc(s.ttl)+'</strong></span><button class="btn btn-gh btn-sm" onclick="restoreSection(&quot;'+s.id+'&quot;)">&#8629; Restore</button></div>'; }); }
+  var hc=Object.keys(gstruct.hiddenCards);
+  if(hc.length){ html+='<div class="ml" style="margin-top:14px">Hidden Cards</div>'; hc.forEach(function(cid){ var t=(defs[cid]||cards[cid]||{}).title||cid; html+='<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--s2);border:1px solid var(--bd);border-radius:7px;margin-bottom:8px"><strong>'+esc(t)+'</strong><button class="btn btn-gh btn-sm" onclick="restoreCard(&quot;'+cid+'&quot;)">&#8629; Restore</button></div>'; }); }
+  var hf=Object.keys(gstruct.hiddenFields);
+  if(hf.length){ html+='<div class="ml" style="margin-top:14px">Hidden Fields</div>'; hf.forEach(function(fid){ var lbl=fid; Object.values(defs).forEach(function(c){(c.fields||[]).forEach(function(f){if(f.id===fid)lbl=f.lbl;});}); if(gstruct.fieldDefs[fid]&&gstruct.fieldDefs[fid].lbl) lbl=gstruct.fieldDefs[fid].lbl; html+='<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--s2);border:1px solid var(--bd);border-radius:7px;margin-bottom:8px">'+esc(lbl)+'<button class="btn btn-gh btn-sm" onclick="restoreField(&quot;'+fid+'&quot;)">&#8629; Restore</button></div>'; }); }
+  if(!html) html='<p style="color:var(--mu);font-size:12px;text-align:center;padding:20px 0">No hidden items.</p>';
+  document.getElementById('hiddenModalBody').innerHTML=html;
+}
+function restoreSection(sid){ delete gstruct.hiddenSections[sid]; saveGStruct(); updateHiddenBtn(); rebuildAll(); renderHiddenModal(); toast('Phase restored','&#8629;'); }
+function restoreCard(cid){ delete gstruct.hiddenCards[cid]; saveGStruct(); updateHiddenBtn(); rebuildAll(); renderHiddenModal(); toast('Card restored','&#8629;'); }
+function restoreField(fid){ delete gstruct.hiddenFields[fid]; saveGStruct(); updateHiddenBtn(); Object.keys(cards).forEach(function(cid){if((cards[cid]&&cards[cid].fields||[]).some(function(f){return f.id===fid;}))refreshCard(cid);}); renderHiddenModal(); toast('Field restored','&#8629;'); }
+
 async function init(){
   setSync('sy','Loading…');
   await loadVerIndex();
+  loadGStruct();
   await loadData();
   document.getElementById('ldr').classList.add('off');
   buildVerSelect();
@@ -1236,6 +1327,7 @@ async function init(){
     evalBranching(cid);
   });
   migrateValFromDom();
+  updateHiddenBtn();
   await loadPipeGlobal();
   await loadPipeData();
   hookPipelineLiveUpdates();
@@ -3120,5 +3212,18 @@ init();
   </div>
 </div>
 
+
+<!-- HIDDEN ITEMS MODAL -->
+<div class="ov" id="hiddenOv">
+  <div class="ov-bg" onclick="closeHiddenModal()"></div>
+  <div class="ov-box" style="width:500px;max-width:95vw;max-height:85vh;overflow-y:auto">
+    <div class="fm-hdr">
+      <div><h3>Hidden Items</h3><p>Restore fields, cards, or phases you previously hid.</p></div>
+      <button class="fm-x" onclick="closeHiddenModal()">✕</button>
+    </div>
+    <div class="fm-body" id="hiddenModalBody"></div>
+    <div class="fm-ftr"><button class="btn btn-gh" onclick="closeHiddenModal()">Close</button></div>
+  </div>
+</div>
 </body>
 </html>
