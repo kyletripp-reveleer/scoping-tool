@@ -1039,18 +1039,25 @@ const store = {
     return localStorage.getItem(key);
   },
 
-  // WRITE: localStorage immediately + SharePoint in background (fire and forget)
+  // WRITE: localStorage immediately + await SharePoint write
   async set(key,val){
     if(inClaude){ await window.storage.set(key,val,true); return; }
     localStorage.setItem(key, val);
-    fetch(SP_SET_URL, {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({key:key, value:val})
-    }).then(function(r){
+    try{
+      var r = await fetch(SP_SET_URL, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({key:key, value:val})
+      });
       store._spOk = r.ok;
-      if(!r.ok) r.text().then(function(t){ console.warn('[SP set error]', r.status, t); });
-    }).catch(function(e){ store._spOk=false; console.warn('[SP set failed]',e); });
+      if(!r.ok){
+        var t = await r.text().catch(function(){return '';});
+        console.warn('[SP set error]', r.status, t);
+      }
+    }catch(e){
+      store._spOk=false;
+      console.warn('[SP set failed]',e);
+    }
   },
 
   async del(key){
@@ -1329,11 +1336,15 @@ async function init(){
   try{
     setSync('sy','Syncing from SharePoint…');
     var synced = await store.syncFromSharePoint(keysToSync);
-    // Reload everything from the freshly synced localStorage
-    await loadVerIndex();
-    await loadGStruct();
-    await loadData();
-    setSync('ok', synced > 0 ? 'Synced · SharePoint' : 'Saved locally');
+    // Only reload if SharePoint actually had data — prevents wiping local data
+    if(synced > 0){
+      await loadVerIndex();
+      await loadGStruct();
+      await loadData();
+      setSync('ok','Synced · SharePoint');
+    } else {
+      setSync('ok','Saved locally');
+    }
   }catch(e){
     console.warn('[SP sync failed]', e);
     setSync('ok','Saved locally');
