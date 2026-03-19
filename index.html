@@ -1169,6 +1169,105 @@ async function resetForm() {
   toast('Form reset ✓', '↺');
 }
 
+// ══════════════════════════════════════════════════
+//  GLOBAL STRUCTURE
+// ══════════════════════════════════════════════════
+const GLOBAL_STRUCT_KEY = 'ci-global-struct';
+let gstruct = {
+  fieldDefs:{}, fieldOrder:{}, hiddenFields:{}, hiddenCards:{},
+  hiddenSections:{}, cardTitles:{}, newFields:{}, newCards:{},
+  sdefs:null, secCards:null
+};
+
+function saveGStruct(){
+  try{ localStorage.setItem(GLOBAL_STRUCT_KEY, JSON.stringify(gstruct)); }catch(e){}
+}
+
+function loadGStruct(){
+  try{
+    var raw=localStorage.getItem(GLOBAL_STRUCT_KEY);
+    if(!raw) return;
+    var s=JSON.parse(raw);
+    gstruct.fieldDefs      = s.fieldDefs      ||{};
+    gstruct.fieldOrder     = s.fieldOrder     ||{};
+    gstruct.hiddenFields   = s.hiddenFields   ||{};
+    gstruct.hiddenCards    = s.hiddenCards    ||{};
+    gstruct.hiddenSections = s.hiddenSections ||{};
+    gstruct.cardTitles     = s.cardTitles     ||{};
+    gstruct.newFields      = s.newFields      ||{};
+    gstruct.newCards       = s.newCards       ||{};
+    gstruct.sdefs          = s.sdefs          ||null;
+    gstruct.secCards       = s.secCards       ||null;
+  }catch(e){ console.error('[loadGStruct]',e); }
+}
+
+function applyGStruct(){
+  try{
+    Object.keys(gstruct.fieldDefs).forEach(function(fid){
+      var ov=gstruct.fieldDefs[fid];
+      Object.values(cards).forEach(function(card){
+        var f=(card.fields||[]).find(function(x){return x.id===fid;});
+        if(f) Object.assign(f,ov);
+      });
+    });
+    Object.keys(gstruct.cardTitles).forEach(function(cid){
+      if(cards[cid]) cards[cid].title=gstruct.cardTitles[cid];
+    });
+    Object.keys(gstruct.newFields).forEach(function(cid){
+      if(!cards[cid]) return;
+      var ex=new Set((cards[cid].fields||[]).map(function(f){return f.id;}));
+      (gstruct.newFields[cid]||[]).forEach(function(f){
+        if(!ex.has(f.id)) cards[cid].fields.push(JSON.parse(JSON.stringify(f)));
+      });
+    });
+    Object.keys(gstruct.fieldOrder).forEach(function(cid){
+      if(!cards[cid]) return;
+      var order=gstruct.fieldOrder[cid], map={};
+      (cards[cid].fields||[]).forEach(function(f){map[f.id]=f;});
+      var ordered=[];
+      order.forEach(function(fid){if(map[fid])ordered.push(map[fid]);});
+      (cards[cid].fields||[]).forEach(function(f){if(!order.includes(f.id))ordered.push(f);});
+      cards[cid].fields=ordered;
+    });
+    Object.keys(gstruct.newCards).forEach(function(cid){
+      if(!cards[cid]){
+        var nc=gstruct.newCards[cid];
+        cards[cid]={title:nc.title,fields:(nc.fields||[]).map(function(f){return JSON.parse(JSON.stringify(f));})};
+        var si=nc.secIdx;
+        if(si!==undefined&&SEC_CARDS[si]&&!SEC_CARDS[si].includes(cid)) SEC_CARDS[si].push(cid);
+      }
+    });
+    if(gstruct.sdefs&&gstruct.sdefs.length){
+      SDEFS.length=0; gstruct.sdefs.forEach(function(s){SDEFS.push(Object.assign({},s));});
+    }
+    if(gstruct.secCards&&gstruct.secCards.length){
+      SEC_CARDS.length=0; gstruct.secCards.forEach(function(a){SEC_CARDS.push(a.slice());});
+    }
+  }catch(e){ console.error('[applyGStruct]',e); }
+}
+
+function updateHiddenBtn(){
+  var any=Object.keys(gstruct.hiddenFields).length||Object.keys(gstruct.hiddenCards).length||Object.keys(gstruct.hiddenSections).length;
+  var btn=document.getElementById('hiddenBtn');
+  if(btn) btn.style.display=any?'':'none';
+}
+function openHiddenModal(){ renderHiddenModal(); document.getElementById('hiddenOv').classList.add('on'); }
+function closeHiddenModal(){ document.getElementById('hiddenOv').classList.remove('on'); }
+function renderHiddenModal(){
+  var defs=defaultCards(), html='';
+  var hs=SDEFS.filter(function(s){return gstruct.hiddenSections[s.id];});
+  if(hs.length){ html+='<div class="ml">Hidden Phases</div>'; hs.forEach(function(s){ html+='<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--s2);border:1px solid var(--bd);border-radius:7px;margin-bottom:8px"><span>'+esc(s.ico)+' <strong>'+esc(s.ttl)+'</strong></span><button class="btn btn-gh btn-sm" onclick="restoreSection(&quot;'+s.id+'&quot;)">&#8629; Restore</button></div>'; }); }
+  var hc=Object.keys(gstruct.hiddenCards);
+  if(hc.length){ html+='<div class="ml" style="margin-top:14px">Hidden Cards</div>'; hc.forEach(function(cid){ var t=(defs[cid]||cards[cid]||{}).title||cid; html+='<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--s2);border:1px solid var(--bd);border-radius:7px;margin-bottom:8px"><strong>'+esc(t)+'</strong><button class="btn btn-gh btn-sm" onclick="restoreCard(&quot;'+cid+'&quot;)">&#8629; Restore</button></div>'; }); }
+  var hf=Object.keys(gstruct.hiddenFields);
+  if(hf.length){ html+='<div class="ml" style="margin-top:14px">Hidden Fields</div>'; hf.forEach(function(fid){ var lbl=fid; Object.values(defs).forEach(function(c2){(c2.fields||[]).forEach(function(f){if(f.id===fid)lbl=f.lbl;});}); if(gstruct.fieldDefs[fid]&&gstruct.fieldDefs[fid].lbl) lbl=gstruct.fieldDefs[fid].lbl; html+='<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--s2);border:1px solid var(--bd);border-radius:7px;margin-bottom:8px">'+esc(lbl)+'<button class="btn btn-gh btn-sm" onclick="restoreField(&quot;'+fid+'&quot;)">&#8629; Restore</button></div>'; }); }
+  if(!html) html='<p style="color:var(--mu);font-size:12px;text-align:center;padding:20px 0">No hidden items.</p>';
+  document.getElementById('hiddenModalBody').innerHTML=html;
+}
+function restoreSection(sid){ delete gstruct.hiddenSections[sid]; saveGStruct(); updateHiddenBtn(); rebuildAll(); renderHiddenModal(); toast('Phase restored'); }
+function restoreCard(cid){ delete gstruct.hiddenCards[cid]; saveGStruct(); updateHiddenBtn(); rebuildAll(); renderHiddenModal(); toast('Card restored'); }
+function restoreField(fid){ delete gstruct.hiddenFields[fid]; saveGStruct(); updateHiddenBtn(); Object.keys(cards).forEach(function(cid){if((cards[cid]&&cards[cid].fields||[]).some(function(f){return f.id===fid;}))refreshCard(cid);}); renderHiddenModal(); toast('Field restored'); }
+
 async function init(){
   setSync('sy','Loading…');
   await loadVerIndex();
