@@ -2032,14 +2032,17 @@ function buildProfile() {
 
   SDEFS.forEach((s, si) => {
     if (si === summaryIdx) return; // skip summary
+    if (gstruct.hiddenSections[s.id]) return; // skip hidden sections
     const cids = SEC_CARDS[si] || [];
     if (!cids.length) return;
 
     let rowsHtml = '';
     cids.forEach(cid => {
+      if (gstruct.hiddenCards[cid]) return; // skip hidden cards
       const card = cards[cid];
       if (!card) return;
       (card.fields || []).forEach((f, fi) => {
+        if (gstruct.hiddenFields[f.id]) return; // skip hidden fields
         // Skip hidden-by-branch fields
         const row = document.getElementById(`fr-${cid}-${fi}`);
         if (row && row.classList.contains('hidden-by-branch')) return;
@@ -2835,8 +2838,13 @@ const PIPE_GLOBAL_KEY = 'ci-pipe-global';
 async function loadPipeGlobal() {
   try {
     const raw = await store.get(PIPE_GLOBAL_KEY);
-    if (raw) pipePhases = JSON.parse(raw);
-    else pipePhases = JSON.parse(JSON.stringify(PIPE_PHASES_DEFAULT));
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      // Ensure it's an array before using it
+      pipePhases = Array.isArray(parsed) ? parsed : JSON.parse(JSON.stringify(PIPE_PHASES_DEFAULT));
+    } else {
+      pipePhases = JSON.parse(JSON.stringify(PIPE_PHASES_DEFAULT));
+    }
   } catch(e) { pipePhases = JSON.parse(JSON.stringify(PIPE_PHASES_DEFAULT)); }
 }
 async function savePipeGlobal() {
