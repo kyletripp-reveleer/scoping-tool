@@ -628,14 +628,8 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 // ══════════════════════════════════════════════════
 const PW = '522522';
 const SK = 'ci-v5';
-// ── SharePoint / Power Automate URLs (edit these to enable shared storage) ──
-const SP_GET_URL = 'https://default044b1e3171a44846afc99671d32d99.6f.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/ad99f7e5d3f845efa22430b05dc9c615/triggers/manual/paths/invoke?api-version=1
-';
-const SP_SET_URL = 'https://default044b1e3171a44846afc99671d32d99.6f.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/391d343d02ef4d888983f9c351320192/triggers/manual/paths/invoke?api-version=1
-';
-const VER_INDEX_KEY  = 'ci-ver-index';       // [{id,name,created}]
-const HIDDEN_KEY     = 'ci-hidden-global';   // global hidden flags
-const STRUCTURE_KEY  = 'ci-structure-global';// global form structure overrides
+const VER_INDEX_KEY = 'ci-ver-index'; // stores [{id,name,created}]
+const HIDDEN_KEY    = 'ci-hidden-global';
 
 // ══════════════════════════════════════════════════
 //  VERSION MANAGEMENT
@@ -665,29 +659,36 @@ function buildVerSelect(){
 }
 
 async function switchVersion(id){
-  if(id===curVerId) return;
+  if(id === curVerId) return;
+  // Save current version first
   await saveData();
-  curVerId=id;
-  SDEFS=[
-    {id:'s0',ico:'🏥',ttl:'Customer Profile',sub:'Identify the customer type and buying organization'},
-    {id:'s1',ico:'⚙️',ttl:'Platform Configuration',sub:'Lines of business, members, risk & care gaps'},
-    {id:'s2',ico:'🔄',ttl:'Workflow Configuration',sub:'POC integration and visit workflow enablement'},
-    {id:'s3',ico:'🔗',ttl:'POC Integration Phases',sub:'EMR integrations by phase'},
-    {id:'s4',ico:'🗄️',ttl:'Data Sources',sub:'Configure data types in scope and ingestion method'},
-    {id:'s5',ico:'📝',ttl:'Coding Services',sub:'Volume, delivery model, and notes'},
-    {id:'s6',ico:'⚙️',ttl:'Core Platform Configuration',sub:'User roles, workflows, risk models, rules, and platform settings'},
-    {id:'s7',ico:'✅',ttl:'Scope Summary',sub:'Review your configuration before exporting'},
+  curVerId = id;
+  // Reset to defaults before loading new version
+  cards = defaultCards();
+  SDEFS = [
+    {id:'s0',ico:'🏥',ttl:'Customer Profile',       sub:'Identify the customer type and buying organization'},
+    {id:'s1',ico:'⚙️',ttl:'Platform Configuration', sub:'Lines of business, members, risk & care gaps'},
+    {id:'s2',ico:'🔄',ttl:'Workflow Configuration',  sub:'POC integration and visit workflow enablement'},
+    {id:'s3',ico:'🔗',ttl:'POC Integration Phases',  sub:'EMR integrations by phase'},
+    {id:'s4',ico:'🗄️',ttl:'Data Sources',            sub:'Configure data types in scope and ingestion method'},
+    {id:'s5',ico:'📝',ttl:'Coding Services',         sub:'Volume, delivery model, and notes'},
+    {id:'s6',ico:'⚙️',ttl:'Core Platform Configuration', sub:'User roles, workflows, risk models, rules, and platform settings'},
+    {id:'s7',ico:'✅',ttl:'Scope Summary',           sub:'Review your configuration before exporting'},
   ];
-  SEC_CARDS.length=0;
+  SEC_CARDS.length = 0;
   [['c0-org'],['c1-platform','c1-lob','c1-risk'],['c2-workflows','c2-poc','c3-native','c3-uni'],[],['c4-data'],['c5-coding','c5-notes'],['c1-core'],[]].forEach(a=>SEC_CARDS.push(a));
   await loadData();
-  buildVerSelect(); buildSections(); curStep=0; buildNav(); updProg();
+  buildVerSelect();
+  buildSections();
+  curStep = 0;
+  buildNav();
+  updProg();
   Object.keys(cards).forEach(cid=>{ attachBranchListeners(cid); evalBranching(cid); });
   migrateValFromDom();
-  await loadPipeData();
-  if(currentMode==='pipeline') buildPipeline();
   updateHiddenBtn();
-  toast('Switched to: '+(verIndex.find(v=>v.id===id)?.name||id),'📋');
+  await loadPipeData();
+  if (currentMode === 'pipeline') buildPipeline();
+  toast(`Switched to: ${verIndex.find(v=>v.id===id)?.name||id}`,'📋');
 }
 
 function openVerModal(){
@@ -699,16 +700,38 @@ function openVerModal(){
 function closeVerModal(){ document.getElementById('verOv').classList.remove('on'); }
 
 async function createVersion(){
-  const name=document.getElementById('verNameInp').value.trim();
+  const name = document.getElementById('verNameInp').value.trim();
   if(!name){ document.getElementById('verErr').textContent='Enter a customer name.'; return; }
-  if(verIndex.some(v=>v.name.toLowerCase()===name.toLowerCase())){ document.getElementById('verErr').textContent='A version with this name already exists.'; return; }
-  const id='ver-'+Date.now();
+  if(verIndex.some(v=>v.name.toLowerCase()===name.toLowerCase())){
+    document.getElementById('verErr').textContent='A version with this name already exists.'; return;
+  }
+  const id = 'ver-' + Date.now();
+  // Save current state first
   await saveData();
-  verIndex.push({id,name,created:new Date().toISOString()});
+
+  // Always copy current form structure; strip answers so new customer starts blank
+  {
+    const snapshot = JSON.parse(JSON.stringify({cards, sdefs: SDEFS, secCards: SEC_CARDS}));
+    const allDefaults = Object.keys(defaultCards());
+    const deleted = allDefaults.filter(cid => !cards[cid]);
+    Object.keys(snapshot.cards).forEach(cid => {
+      (snapshot.cards[cid]?.fields || []).forEach(f => { delete f.val; });
+    });
+    try {
+      await store.set(verStorageKey(id), JSON.stringify({
+        cards: snapshot.cards,
+        deleted,
+        sdefs: snapshot.sdefs,
+        secCards: snapshot.secCards
+      }));
+    } catch(e){}
+  }
+
+  verIndex.push({id, name, created: new Date().toISOString()});
   await saveVerIndex();
   closeVerModal();
   await switchVersion(id);
-  toast('Created: '+name,'✨');
+  toast(`Created: ${name}`,'✨');
 }
 
 function openManageModal(){
@@ -778,20 +801,7 @@ function exportVersion(){
 
   var patched = document.documentElement.outerHTML;
 
-  // Inject baked state before 
-<!-- HIDDEN ITEMS MODAL -->
-<div class="ov" id="hiddenOv">
-  <div class="ov-bg" onclick="closeHiddenModal()"></div>
-  <div class="ov-box" style="width:500px;max-width:95vw;max-height:85vh;overflow-y:auto">
-    <div class="fm-hdr">
-      <div><h3>Hidden Items</h3><p>Restore fields, cards, or phases you previously hid.</p></div>
-      <button class="fm-x" onclick="closeHiddenModal()">✕</button>
-    </div>
-    <div class="fm-body" id="hiddenModalBody"></div>
-    <div class="fm-ftr"><button class="btn btn-gh" onclick="closeHiddenModal()">Close</button></div>
-  </div>
-</div>
-</body>
+  // Inject baked state before </body>
   patched = patched.replace('</body>', '<script>\n' + bakedScript + '\n<\/script>\n</body>');
 
   // Patch initialisers to prefer baked data
@@ -808,9 +818,7 @@ function exportVersion(){
   }
 
   patched = patched.replace(
-    'let cards = defaultCards();   // { cid: { title, fields[] } }
-let hidden    = {fields:{}, cards:{}, sections:{}};
-let structure = {fields:{}, newFields:{}, cards:{}, newCards:{}, sdefs:null, secCards:null, fieldOrder:{}};',
+    'let cards = defaultCards();   // { cid: { title, fields[] } }',
     'let cards = (function(){ var d=defaultCards(); if(window.__BAKED__){ Object.keys(window.__BAKED__.cards).forEach(function(k){ d[k]=window.__BAKED__.cards[k]; }); } return d; })();   // { cid: { title, fields[] } }'
   );
 
@@ -1018,20 +1026,11 @@ function closePin(){ document.getElementById('pinOv').classList.remove('on'); pe
 //  In browser: uses localStorage (persists locally).
 // ══════════════════════════════════════════════════
 const inClaude = typeof window.storage !== 'undefined' && typeof window.storage.get === 'function';
-const inSharePoint = !inClaude &&
-  SP_GET_URL !== 'PASTE_YOUR_GET_FLOW_URL_HERE' &&
-  SP_SET_URL !== 'PASTE_YOUR_SET_FLOW_URL_HERE';
 
 const store = {
   async get(key){
     if(inClaude){
       try{ const r=await window.storage.get(key,true); return r?.value??null; }catch(e){ return null; }
-    } else if(inSharePoint){
-      try{
-        const r=await fetch(SP_GET_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get',key})});
-        if(!r.ok) return localStorage.getItem(key);
-        const j=await r.json(); return j.value??null;
-      }catch(e){ return localStorage.getItem(key); }
     } else {
       return localStorage.getItem(key);
     }
@@ -1039,9 +1038,6 @@ const store = {
   async set(key,val){
     if(inClaude){
       await window.storage.set(key,val,true);
-    } else if(inSharePoint){
-      try{ await fetch(SP_SET_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'set',key,value:val})}); }catch(e){}
-      localStorage.setItem(key,val);
     } else {
       localStorage.setItem(key,val);
     }
@@ -1049,9 +1045,6 @@ const store = {
   async del(key){
     if(inClaude){
       try{ await window.storage.delete(key,true); }catch(e){}
-    } else if(inSharePoint){
-      try{ await fetch(SP_SET_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'del',key})}); }catch(e){}
-      localStorage.removeItem(key);
     } else {
       localStorage.removeItem(key);
     }
@@ -1068,44 +1061,80 @@ function setSync(s,l){
 
 async function loadData(){
   try{
-    // Always build from defaultCards, then apply global structure on top
-    cards = JSON.parse(JSON.stringify(defaultCards()));
-    applyStructure();
-
-    // Load per-customer answers
-    const raw = await store.get(verStorageKey(curVerId));
-    if(raw){
-      const saved = JSON.parse(raw);
-      const vals = saved.vals || {};
-      // Legacy: extract vals from old cards format
-      if(!saved.vals && saved.cards){
-        Object.values(saved.cards).forEach(card=>{
-          (card.fields||[]).forEach(f=>{
-            if(f.id&&f.val!==undefined&&f.val!==null&&f.val!=='') vals[f.id]=f.val;
-          });
+    const val=await store.get(verStorageKey(curVerId));
+    if(val){
+      const saved=JSON.parse(val);
+      // Restore section/phase definitions
+      if(Array.isArray(saved.sdefs) && saved.sdefs.length) SDEFS = saved.sdefs;
+      if(Array.isArray(saved.secCards) && saved.secCards.length){
+        SEC_CARDS.length = 0;
+        saved.secCards.forEach(arr => SEC_CARDS.push(arr));
+      }
+      if(saved.cards){
+        Object.keys(saved.cards).forEach(cid=>{
+          if(!cards[cid]) cards[cid] = {title: saved.cards[cid].title || cid, fields:[]};
+          cards[cid].fields=saved.cards[cid].fields;
+          if(saved.cards[cid].title) cards[cid].title=saved.cards[cid].title;
         });
       }
-      Object.values(cards).forEach(card=>{
-        (card.fields||[]).forEach(f=>{ if(vals[f.id]!==undefined) f.val=vals[f.id]; });
+      if(Array.isArray(saved.deleted)){
+        saved.deleted.forEach(cid=>{
+          delete cards[cid];
+          SEC_CARDS.forEach(arr=>{const i=arr.indexOf(cid);if(i>-1)arr.splice(i,1);});
+        });
+      }
+      // ── Merge any new builtin cards added since this snapshot was saved ──
+      const defaults = defaultCards();
+      // Map of cid → preferred section title (for fuzzy matching against saved SDEFS)
+      const cidSectionHint = {
+        'c0-org':'Customer Profile',
+        'c1-platform':'Platform Configuration','c1-lob':'Platform Configuration','c1-risk':'Platform Configuration','c1-core':'Platform Configuration',
+        'c2-workflows':'Workflow Configuration','c2-poc':'Workflow Configuration',
+        'c3-native':'POC Integration','c3-uni':'POC Integration',
+        'c4-data':'Data Sources',
+        'c5-coding':'Coding Services','c5-notes':'Coding Services',
+      };
+      const defaultSecCards = [['c0-org'],['c1-platform','c1-lob','c1-risk'],['c2-workflows','c2-poc','c3-native','c3-uni'],[],['c4-data'],['c5-coding','c5-notes'],['c1-core'],[]];
+      Object.keys(defaults).forEach(cid => {
+        // Add missing card to cards object
+        if (!cards[cid]) cards[cid] = defaults[cid];
+        // Add to SEC_CARDS if not already present anywhere
+        const alreadyPlaced = SEC_CARDS.some(arr => arr.includes(cid));
+        if (!alreadyPlaced) {
+          // Try to find section by title hint first
+          const hint = cidSectionHint[cid] || '';
+          let targetSi = -1;
+          if (hint) {
+            targetSi = SDEFS.findIndex(s => s.ttl.toLowerCase().includes(hint.toLowerCase().split(' ')[0]));
+          }
+          // Fallback: use default section index
+          if (targetSi === -1) {
+            defaultSecCards.forEach((arr, si) => { if (arr.includes(cid) && si < SEC_CARDS.length) targetSi = si; });
+          }
+          if (targetSi >= 0 && SEC_CARDS[targetSi]) SEC_CARDS[targetSi].push(cid);
+        }
       });
     }
-    setSync('ok',inClaude?'Synced':inSharePoint?'Saved to SharePoint':'Saved locally');
-  }catch(e){ console.error('[loadData]',e); setSync('ok','Ready'); }
+    setSync('ok', inClaude ? 'Synced' : 'Saved locally');
+  }catch(e){ setSync('ok','Ready'); }
 }
 
 async function saveData(){
   setSync('sy','Saving…');
   try{
-    const vals={};
-    Object.values(cards).forEach(card=>{
-      (card.fields||[]).forEach(f=>{
-        if(f.val!==undefined&&f.val!==null&&f.val!==''&&!(Array.isArray(f.val)&&f.val.length===0))
-          vals[f.id]=f.val;
-      });
+    const allDefaults=Object.keys(defaultCards());
+    const deleted=allDefaults.filter(cid=>!cards[cid]);
+    const cardsPayload={};
+    Object.keys(cards).forEach(cid=>{
+      cardsPayload[cid]={title:cards[cid].title,fields:cards[cid].fields};
     });
-    await store.set(verStorageKey(curVerId),JSON.stringify({vals}));
-    setSync('ok',inClaude?'Saved · shared':inSharePoint?'Saved to SharePoint':'Saved locally');
-    setTimeout(()=>setSync('ok',inClaude?'Synced':inSharePoint?'SharePoint ✓':'Saved locally'),2200);
+    await store.set(verStorageKey(curVerId),JSON.stringify({
+      cards:cardsPayload, deleted,
+      sdefs: SDEFS,
+      secCards: SEC_CARDS,
+    }));
+    setSync('ok', inClaude ? 'Saved · shared' : 'Saved locally');
+    setTimeout(()=>setSync('ok', inClaude ? 'Synced' : 'Saved locally'),2200);
   }catch(e){ setSync('er','Save failed'); toast('Could not save','⚠️'); }
 }
 
@@ -1180,91 +1209,16 @@ async function resetForm() {
   toast('Form reset ✓', '↺');
 }
 
-
-// ══════════════════════════════════════════════════
-//  GLOBAL HIDDEN FLAGS
-// ══════════════════════════════════════════════════
 async function loadHidden(){
   try{
-    const raw=await store.get(HIDDEN_KEY);
+    const raw=localStorage.getItem(HIDDEN_KEY);
     if(raw){ const h=JSON.parse(raw); hidden.fields=h.fields||{}; hidden.cards=h.cards||{}; hidden.sections=h.sections||{}; }
   }catch(e){}
 }
-async function saveHidden(){ try{ await store.set(HIDDEN_KEY,JSON.stringify(hidden)); }catch(e){} }
-
-// ══════════════════════════════════════════════════
-//  GLOBAL STRUCTURE OVERRIDES
-// ══════════════════════════════════════════════════
-async function loadStructure(){
-  try{
-    const raw=await store.get(STRUCTURE_KEY);
-    if(raw){
-      const s=JSON.parse(raw);
-      structure.fields    =s.fields    ||{};
-      structure.newFields =s.newFields ||{};
-      structure.cards     =s.cards     ||{};
-      structure.newCards  =s.newCards  ||{};
-      structure.sdefs     =s.sdefs     ||null;
-      structure.secCards  =s.secCards  ||null;
-      structure.fieldOrder=s.fieldOrder||{};
-    }
-  }catch(e){ console.error('[loadStructure]',e); }
-}
-async function saveStructure(){ try{ await store.set(STRUCTURE_KEY,JSON.stringify(structure)); }catch(e){} }
-
-function applyStructure(){
-  try{
-    // 1. Field definition overrides
-    Object.keys(structure.fields).forEach(fid=>{
-      const ov=structure.fields[fid];
-      Object.values(cards).forEach(card=>{
-        const f=(card.fields||[]).find(x=>x.id===fid);
-        if(f) Object.assign(f,ov);
-      });
-    });
-    // 2. User-added fields
-    Object.keys(structure.newFields).forEach(cid=>{
-      if(!cards[cid]) return;
-      const existing=new Set((cards[cid].fields||[]).map(f=>f.id));
-      (structure.newFields[cid]||[]).forEach(f=>{ if(!existing.has(f.id)) cards[cid].fields.push({...f}); });
-    });
-    // 3. Field order
-    Object.keys(structure.fieldOrder).forEach(cid=>{
-      if(!cards[cid]) return;
-      const order=structure.fieldOrder[cid];
-      const map={};
-      (cards[cid].fields||[]).forEach(f=>{ map[f.id]=f; });
-      const ordered=[];
-      order.forEach(fid=>{ if(map[fid]) ordered.push(map[fid]); });
-      (cards[cid].fields||[]).forEach(f=>{ if(!order.includes(f.id)) ordered.push(f); });
-      cards[cid].fields=ordered;
-    });
-    // 4. Card title overrides
-    Object.keys(structure.cards).forEach(cid=>{
-      if(cards[cid]&&structure.cards[cid].title) cards[cid].title=structure.cards[cid].title;
-    });
-    // 5. User-added cards
-    Object.keys(structure.newCards).forEach(cid=>{
-      if(!cards[cid]){
-        const nc=structure.newCards[cid];
-        cards[cid]={title:nc.title,fields:(nc.fields||[]).map(f=>({...f}))};
-        const si=nc.secIdx;
-        if(si!==undefined&&SEC_CARDS[si]&&!SEC_CARDS[si].includes(cid)) SEC_CARDS[si].push(cid);
-      }
-    });
-    // 6. Phase/section overrides
-    if(structure.sdefs&&structure.sdefs.length){ SDEFS.length=0; structure.sdefs.forEach(s=>SDEFS.push({...s})); }
-    if(structure.secCards&&structure.secCards.length){ SEC_CARDS.length=0; structure.secCards.forEach(a=>SEC_CARDS.push([...a])); }
-  }catch(e){ console.error('[applyStructure]',e); }
-}
-
-// ══════════════════════════════════════════════════
-//  HIDDEN ITEMS UI
-// ══════════════════════════════════════════════════
+function saveHidden(){ try{ localStorage.setItem(HIDDEN_KEY,JSON.stringify(hidden)); }catch(e){} }
 function updateHiddenBtn(){
-  const any=Object.keys(hidden.fields).length>0||Object.keys(hidden.cards).length>0||Object.keys(hidden.sections).length>0;
-  const btn=document.getElementById('hiddenBtn');
-  if(btn) btn.style.display=any?'':'none';
+  const any=Object.keys(hidden.fields).length||Object.keys(hidden.cards).length||Object.keys(hidden.sections).length;
+  const b=document.getElementById('hiddenBtn'); if(b) b.style.display=any?'':'none';
 }
 function openHiddenModal(){ renderHiddenModal(); document.getElementById('hiddenOv').classList.add('on'); }
 function closeHiddenModal(){ document.getElementById('hiddenOv').classList.remove('on'); }
@@ -1288,25 +1242,22 @@ function restoreField(fid){
 }
 
 async function init(){
-  const loaderTimeout=setTimeout(()=>{ document.getElementById('ldr').classList.add('off'); setSync('ok','Ready'); },3000);
-  try{
-    setSync('sy','Loading…');
-    await loadVerIndex();
-    await loadStructure();
-    await loadHidden();
-    await loadData();
-  }catch(e){ console.error('[init]',e); }
-  clearTimeout(loaderTimeout);
+  setSync('sy','Loading…');
+  await loadVerIndex();
+  await loadHidden();
+  await loadData();
   document.getElementById('ldr').classList.add('off');
-  try{ buildVerSelect(); }catch(e){ console.error('[init] buildVerSelect:',e); }
-  try{ buildNav(); buildSections(); updProg(); }catch(e){ console.error('[init] buildSections:',e); }
-  try{ Object.keys(cards).forEach(cid=>{ attachBranchListeners(cid); evalBranching(cid); }); }catch(e){ console.error('[init] branching:',e); }
-  try{ migrateValFromDom(); }catch(e){ console.error('[init] migrate:',e); }
-  try{ await loadPipeGlobal(); }catch(e){ console.error('[init] pipeGlobal:',e); }
-  try{ await loadPipeData(); }catch(e){ console.error('[init] pipeData:',e); }
-  try{ hookPipelineLiveUpdates(); }catch(e){ console.error('[init] pipeHook:',e); }
+  buildVerSelect();
+  buildNav(); buildSections(); updProg();
+  Object.keys(cards).forEach(cid=>{
+    attachBranchListeners(cid);
+    evalBranching(cid);
+  });
+  migrateValFromDom();
   updateHiddenBtn();
-  setSync('ok',inClaude?'Synced':inSharePoint?'Saved to SharePoint':'Saved locally');
+  await loadPipeGlobal();
+  await loadPipeData();
+  hookPipelineLiveUpdates();
 }
 
 // ══════════════════════════════════════════════════
@@ -1320,25 +1271,48 @@ function goTo(n){ document.getElementById('nb'+curStep)?.classList.remove('on');
 //  BUILD SECTIONS
 // ══════════════════════════════════════════════════
 function buildSections(){
-  if(Object.keys(cards).length===0){ const d=defaultCards(); Object.keys(d).forEach(k=>{ cards[k]=d[k]; }); }
-  const summaryIdx=SDEFS.length-1;
-  const visIdxMap={}; let vi=0;
-  SDEFS.forEach((s,i)=>{ if(i===summaryIdx||!hidden.sections[s.id]){ visIdxMap[i]=vi; vi++; } });
-  const visLen=vi;
+  const summaryIdx = SDEFS.length - 1;
   document.getElementById('wrap').innerHTML=SDEFS.map((s,i)=>{
-    if(i!==summaryIdx&&hidden.sections[s.id]) return '';
-    const isSummary=i===summaryIdx;
-    const vii=visIdxMap[i]??i;
-    const editBtns=!isSummary?`<div class="sec-h-acts"><button class="sec-h-act" onclick="auth(()=>openSecModal(${i}))">✏️ Edit</button>${SDEFS.length>2?`<button class="sec-h-act danger" onclick="auth(()=>deleteSection(${i}))">🗑 Hide</button>`:''}<button class="sec-h-act add-sec" onclick="auth(()=>openSecModal(-1,${i}))">＋ Add Phase After</button></div>`:'';
-    let cardHtml='';
+    if(i!==summaryIdx && hidden.sections[s.id]) return '';
+    const isSummary = i === summaryIdx;
+    const editBtns = !isSummary ? `
+      <div class="sec-h-acts">
+        <button class="sec-h-act" onclick="auth(()=>openSecModal(${i}))">✏️ Edit</button>
+        ${SDEFS.length > 2 ? `<button class="sec-h-act danger" onclick="auth(()=>deleteSection(${i}))">🗑</button>` : ''}
+        <button class="sec-h-act add-sec" onclick="auth(()=>openSecModal(-1,${i}))">＋ Add Phase After</button>
+      </div>` : '';
+
+    let cardHtml = '';
     if(!isSummary){
-      const cids=(SEC_CARDS[i]||[]).filter(cid=>!hidden.cards[cid]);
-      if(!cids.length){ cardHtml=`<div class="sec-empty"><div class="sec-empty-ico">📭</div><p>No visible cards. Add one or restore hidden items.</p><button class="btn-add-card" onclick="auth(()=>promptAddCard(${i}))">＋ Add Card</button></div>`; }
-      else { cardHtml=cids.map(cid=>renderCard(cid)).join('')+`<div class="add-card-row"><button class="btn-add-card" onclick="auth(()=>promptAddCard(${i}))">＋ Add Another Card</button></div>`; }
-    } else { cardHtml=renderSummary(); }
-    const prevVis=Object.entries(visIdxMap).filter(([k,v])=>v===vii-1).map(([k])=>parseInt(k))[0];
-    const nextVis=Object.entries(visIdxMap).filter(([k,v])=>v===vii+1).map(([k])=>parseInt(k))[0];
-    return `<div class="sec ${vii===0?'on':''}" id="sec${i}"><div class="sec-h"><div class="sec-ico">${s.ico}</div><div class="sec-h-info"><div class="sec-ttl" id="sttl-${i}">${esc(s.ttl)}</div><div class="sec-sub" id="ssub-${i}">${esc(s.sub)}</div></div>${editBtns}</div>${cardHtml}${!isSummary?`<div class="nav-row">${prevVis!==undefined?`<button class="btn btn-gh" onclick="goTo(${prevVis})">← Back</button>`:'<div></div>'}<button class="btn btn-pri" onclick="goTo(${nextVis??i+1})">${vii===visLen-2?'Review Summary →':'Next: '+(SDEFS[nextVis??i+1]?.ttl.split(' ')[0]||'')+ ' →'}</button></div>`:''}</div>`;
+      const cids = SEC_CARDS[i] || [];
+      if(cids.length === 0){
+        cardHtml = `
+          <div class="sec-empty">
+            <div class="sec-empty-ico">📭</div>
+            <p>This phase has no cards yet. Add a card to start building it out.</p>
+            <button class="btn-add-card" onclick="auth(()=>promptAddCard(${i}))">＋ Add Card</button>
+          </div>`;
+      } else {
+        cardHtml = cids.filter(cid=>!hidden.cards[cid]).map(cid=>renderCard(cid)).join('');
+        cardHtml += `<div class="add-card-row"><button class="btn-add-card" onclick="auth(()=>promptAddCard(${i}))">＋ Add Another Card</button></div>`;
+      }
+    } else {
+      cardHtml = renderSummary();
+    }
+
+    return `
+    <div class="sec ${i===0?'on':''}" id="sec${i}">
+      <div class="sec-h">
+        <div class="sec-ico">${s.ico}</div>
+        <div class="sec-h-info">
+          <div class="sec-ttl" id="sttl-${i}">${esc(s.ttl)}</div>
+          <div class="sec-sub" id="ssub-${i}">${esc(s.sub)}</div>
+        </div>
+        ${editBtns}
+      </div>
+      ${cardHtml}
+      ${!isSummary ? `<div class="nav-row">${i>0?`<button class="btn btn-gh" onclick="goTo(${i-1})">← Back</button>`:'<div></div>'}<button class="btn btn-pri" onclick="goTo(${i+1})">${i===summaryIdx-1?'Review Summary →':'Next: '+SDEFS[i+1].ttl.split(' ')[0]+' →'}</button></div>` : ''}
+    </div>`;
   }).join('');
 }
 
@@ -1377,36 +1351,39 @@ function pickSecIco(ico){
 }
 
 function saveSecModal(){
-  const ttl=document.getElementById('secNameInp').value.trim();
+  const ttl = document.getElementById('secNameInp').value.trim();
   if(!ttl){ toast('Enter a phase name','⚠️'); return; }
-  const sub=document.getElementById('secSubInp').value.trim();
-  const ico=secSelIco||'📋';
-  const summaryIdx=SDEFS.length-1;
-  if(secModalIdx===-1){
-    const newId='sx-'+Date.now();
-    const newSec={id:newId,ico,ttl,sub};
-    const insertPos=secInsertAfter!==null?secInsertAfter+1:summaryIdx;
-    SDEFS.splice(insertPos,0,newSec);
-    SEC_CARDS.splice(insertPos,0,[]);
+  const sub = document.getElementById('secSubInp').value.trim();
+  const ico = secSelIco || '📋';
+  const summaryIdx = SDEFS.length - 1;
+
+  if(secModalIdx === -1){
+    // Insert new phase — before the summary tab
+    const newId = 'sx-' + Date.now();
+    const newSec = {id: newId, ico, ttl, sub};
+    const insertPos = secInsertAfter !== null ? secInsertAfter + 1 : summaryIdx;
+    SDEFS.splice(insertPos, 0, newSec);
+    SEC_CARDS.splice(insertPos, 0, []);
     toast('Phase added!','✨');
   } else {
-    SDEFS[secModalIdx].ttl=ttl;
-    SDEFS[secModalIdx].sub=sub;
-    SDEFS[secModalIdx].ico=ico;
+    SDEFS[secModalIdx].ttl = ttl;
+    SDEFS[secModalIdx].sub = sub;
+    SDEFS[secModalIdx].ico = ico;
     toast('Phase updated','✓');
   }
-  structure.sdefs=SDEFS.map(s=>({...s}));
-  structure.secCards=SEC_CARDS.map(a=>[...a]);
-  closeSecModal(); rebuildAll(); saveStructure();
+
+  closeSecModal();
+  rebuildAll();
+  saveData();
 }
 
 function deleteSection(idx){
   if(SDEFS.length<=2){ toast('Cannot hide the only phase','⚠️'); return; }
   const s=SDEFS[idx];
-  if(!confirm('Hide "'+s.ttl+'" phase? Restore via Hidden Items menu.')) return;
+  if(!confirm('Hide "'+s.ttl+'" phase? You can restore it from the Hidden Items menu.')) return;
   hidden.sections[s.id]=true;
   if(curStep>=SDEFS.length-1) curStep=0;
-  updateHiddenBtn(); rebuildAll(); saveHidden(); toast('Phase hidden — restore via Hidden Items','👁️');
+  updateHiddenBtn(); rebuildAll(); saveHidden(); toast('Phase hidden','👁️');
 }
 
 function rebuildAll(){
@@ -1424,17 +1401,21 @@ function rebuildAll(){
 //  ADD CARD TO SECTION
 // ══════════════════════════════════════════════════
 function promptAddCard(secIdx){
-  const name=prompt('Card name:','New Card');
-  if(name===null) return;
-  const title=name.trim()||'New Card';
-  const cid='cx-'+Date.now();
-  cards[cid]={title,fields:[]};
-  if(!SEC_CARDS[secIdx]) SEC_CARDS[secIdx]=[];
+  const name = prompt('Card name:', 'New Card');
+  if(name === null) return;
+  const title = name.trim() || 'New Card';
+  // Generate a unique card ID
+  const cid = 'cx-' + Date.now();
+  // Register card with empty fields
+  cards[cid] = { title, fields: [] };
+  // Add to this section's card list
+  if(!SEC_CARDS[secIdx]) SEC_CARDS[secIdx] = [];
   SEC_CARDS[secIdx].push(cid);
-  structure.newCards[cid]={title,fields:[],secIdx};
-  structure.secCards=SEC_CARDS.map(a=>[...a]);
-  rebuildAll(); goTo(secIdx);
-  saveStructure(); toast('Card "'+title+'" added — visible to all customers!','✓');
+  rebuildAll();
+  // Navigate to the section that got the card
+  goTo(secIdx);
+  saveData();
+  toast(`Card "${title}" added`, '✓');
 }
 
 function renderCard(cid){
@@ -1459,22 +1440,21 @@ function renderCard(cid){
 
 function renameCard(cid){
   const c=cards[cid]; if(!c) return;
-  const newTitle=prompt('Rename card:',c.title);
+  const newTitle=prompt('Rename section:',c.title);
   if(newTitle===null) return;
-  const t=newTitle.trim(); if(!t){toast('Name cannot be empty','⚠️');return;}
+  const t=newTitle.trim();
+  if(!t){toast('Name cannot be empty','⚠️');return;}
   c.title=t;
-  const el=document.getElementById('ctitle-'+cid); if(el) el.textContent=t;
-  if(!structure.cards[cid]) structure.cards[cid]={};
-  structure.cards[cid].title=t;
-  if(structure.newCards[cid]) structure.newCards[cid].title=t;
-  saveStructure(); toast('Card renamed — applies to all customers!','✓');
+  const el=document.getElementById('ctitle-'+cid);
+  if(el) el.textContent=t;
+  saveData(); toast('Section renamed','✓');
 }
 
 function deleteCard(cid){
   const c=cards[cid]; if(!c) return;
-  if(!confirm('Hide "'+c.title+'" and all its fields? Restore via Hidden Items menu.')) return;
+  if(!confirm('Hide "'+c.title+'"? You can restore it from the Hidden Items menu.')) return;
   hidden.cards[cid]=true;
-  updateHiddenBtn(); rebuildAll(); saveHidden(); toast('Card hidden — restore via Hidden Items','👁️');
+  updateHiddenBtn(); rebuildAll(); saveHidden(); toast('Card hidden','👁️');
 }
 
 function renderFields(cid){
@@ -1567,8 +1547,7 @@ function dzDrop(e,cid){
   if(cid===dragCid&&dest>dragFi)dest--;
   cards[cid].fields.splice(dest,0,moved);
   refreshCard(dragCid);if(cid!==dragCid)refreshCard(cid);
-  [dragCid,cid].filter((v,i,a)=>a.indexOf(v)===i).forEach(c=>{ structure.fieldOrder[c]=(cards[c]?.fields||[]).map(f=>f.id); });
-  saveStructure(); toast('Reordered — applies to all customers!','↕');
+  saveData();toast('Reordered!','↕');
 }
 
 // ══════════════════════════════════════════════════
@@ -1665,39 +1644,36 @@ function saveField(){
   if(!lbl){toast('Enter a field label','⚠️');return;}
   if(!mType){toast('Select a field type','⚠️');return;}
   if(['dropdown','multi','chips'].includes(mType)&&mOpts.length===0){toast('Add at least one option','⚠️');return;}
+
   const condFieldId=document.getElementById('branchField').value||null;
   const condVal=document.getElementById('branchVal').value||null;
-  const existingId=mFi!==null?(cards[mCid]?.fields?.[mFi]?.id||null):null;
+
+  // Preserve stable ID on edit so existing branches pointing to this field stay valid
+  const existingId = mFi!==null ? (cards[mCid]?.fields?.[mFi]?.id||null) : null;
+
   const f={
-    id:existingId||'f'+Date.now(),
-    lbl,type:mType,
+    id: existingId||'f'+Date.now(),
+    lbl, type:mType,
     hint:document.getElementById('fmHint').value.trim(),
     ph:document.getElementById('fmPh').value.trim(),
-    opts:[...mOpts],builtin:false,
-    condFieldId:(condFieldId&&condVal)?condFieldId:null,
-    condVal:(condFieldId&&condVal)?condVal:null,
+    opts:[...mOpts], builtin:false,
+    condFieldId: (condFieldId&&condVal) ? condFieldId : null,
+    condVal:     (condFieldId&&condVal) ? condVal     : null,
   };
   if(!cards[mCid].fields) cards[mCid].fields=[];
-  if(mFi!==null){
-    cards[mCid].fields[mFi]=f;
-    structure.fields[f.id]={lbl:f.lbl,type:f.type,hint:f.hint,ph:f.ph,opts:[...f.opts],condFieldId:f.condFieldId,condVal:f.condVal};
-    if(structure.newFields[mCid]){ const ni=structure.newFields[mCid].findIndex(x=>x.id===f.id); if(ni>=0) structure.newFields[mCid][ni]={...f}; }
-    toast('Field updated — applies to all customers!','✓');
-  } else {
-    cards[mCid].fields.push(f);
-    if(!structure.newFields[mCid]) structure.newFields[mCid]=[];
-    structure.newFields[mCid].push({...f});
-    toast('Field added — visible to all customers!','✓');
-  }
-  refreshCard(mCid); evalBranching(mCid); saveStructure(); closeFM();
+  if(mFi!==null){cards[mCid].fields[mFi]=f; toast('Field updated!','✓');}
+  else{cards[mCid].fields.push(f); toast('Field added!','✓');}
+  refreshCard(mCid);
+  evalBranching(mCid);
+  saveData(); closeFM();
 }
 
 function delField(cid,fi){
-  if(!confirm('Hide this field? It will be hidden for all customers. Restore it via the Hidden Items menu.'))return;
-  const fid=cards[cid].fields[fi]?.id; if(!fid) return;
+  if(!confirm('Hide this field? You can restore it from the Hidden Items menu.'))return;
+  const fid=cards[cid]?.fields[fi]?.id; if(!fid) return;
   hidden.fields[fid]=true;
-  cards[cid].fields.forEach(f=>{ if(f.condFieldId===fid){ f.condFieldId=null; f.condVal=null; } });
-  updateHiddenBtn(); refreshCard(cid); saveHidden(); toast('Field hidden — restore via Hidden Items','👁️');
+  cards[cid].fields.forEach(f=>{ if(f.condFieldId===fid){f.condFieldId=null;f.condVal=null;} });
+  updateHiddenBtn(); refreshCard(cid); saveHidden(); toast('Field hidden','👁️');
 }
 
 // ══════════════════════════════════════════════════
@@ -3053,7 +3029,14 @@ function hookPipelineLiveUpdates() {
 }
 
 
-init();
+(async()=>{
+  const t=setTimeout(()=>{
+    document.getElementById('ldr').classList.add('off');
+  },4000);
+  try{ await init(); }catch(e){ console.error('[init]',e); }
+  clearTimeout(t);
+  document.getElementById('ldr').classList.add('off');
+})();
 </script>
 
 <!-- TASK EDIT MODAL -->
@@ -3135,5 +3118,23 @@ init();
   </div>
 </div>
 
+
+<!-- HIDDEN ITEMS MODAL -->
+<div class="ov" id="hiddenOv">
+  <div class="ov-bg" onclick="closeHiddenModal()"></div>
+
+
+<!-- HIDDEN ITEMS MODAL -->
+<div class="ov" id="hiddenOv">
+  <div class="ov-bg" onclick="closeHiddenModal()"></div>
+  <div class="ov-box" style="width:500px;max-width:95vw;max-height:85vh;overflow-y:auto">
+    <div class="fm-hdr">
+      <div><h3>Hidden Items</h3><p>Restore fields, cards, or phases you previously hid.</p></div>
+      <button class="fm-x" onclick="closeHiddenModal()">✕</button>
+    </div>
+    <div class="fm-body" id="hiddenModalBody"></div>
+    <div class="fm-ftr"><button class="btn btn-gh" onclick="closeHiddenModal()">Close</button></div>
+  </div>
+</div>
 </body>
 </html>
