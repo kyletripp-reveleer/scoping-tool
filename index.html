@@ -1073,16 +1073,6 @@ function setSync(s,l){
   document.getElementById('syncLbl').textContent=l;
 }
 
-async function loadVerIndex(){
-  try{
-    const val=await store.get(VER_INDEX_KEY);
-    if(val){ const parsed=JSON.parse(val); if(Array.isArray(parsed)&&parsed.length) verIndex=parsed; }
-  }catch(e){}
-}
-
-async function saveVerIndex(){
-  try{ await store.set(VER_INDEX_KEY,JSON.stringify(verIndex)); }catch(e){}
-}
 
 async function loadData(){
   try{
@@ -1264,6 +1254,7 @@ function goTo(n){ document.getElementById('nb'+curStep)?.classList.remove('on');
 function buildSections(){
   const summaryIdx = SDEFS.length - 1;
   document.getElementById('wrap').innerHTML=SDEFS.map((s,i)=>{
+    if(i!==summaryIdx && gstruct.hiddenSections[s.id]) return '';
     const isSummary = i === summaryIdx;
     const editBtns = !isSummary ? `
       <div class="sec-h-acts">
@@ -1283,7 +1274,7 @@ function buildSections(){
             <button class="btn-add-card" onclick="auth(()=>promptAddCard(${i}))">＋ Add Card</button>
           </div>`;
       } else {
-        cardHtml = cids.map(cid=>renderCard(cid)).join('');
+        cardHtml = cids.filter(function(cid){return !gstruct.hiddenCards[cid];}).map(cid=>renderCard(cid)).join('');
         cardHtml += `<div class="add-card-row"><button class="btn-add-card" onclick="auth(()=>promptAddCard(${i}))">＋ Add Another Card</button></div>`;
       }
     } else {
@@ -1362,21 +1353,19 @@ function saveSecModal(){
     toast('Phase updated','✓');
   }
 
-  closeSecModal();
-  rebuildAll();
-  saveData();
+  gstruct.sdefs=SDEFS.map(function(s){return Object.assign({},s);});
+  gstruct.secCards=SEC_CARDS.map(function(a){return a.slice();});
+  saveGStruct();
+  closeSecModal(); rebuildAll();
 }
 
 function deleteSection(idx){
-  if(SDEFS.length <= 2){ toast('Cannot delete the only phase','⚠️'); return; }
-  const s = SDEFS[idx];
-  if(!confirm(`Delete the "${s.ttl}" phase? Its cards and fields will be removed.`)) return;
-  SDEFS.splice(idx, 1);
-  SEC_CARDS.splice(idx, 1);
-  if(curStep >= SDEFS.length - 1) curStep = SDEFS.length - 2;
-  rebuildAll();
-  saveData();
-  toast('Phase deleted','🗑');
+  if(SDEFS.length<=2){ toast('Cannot hide the only phase','⚠️'); return; }
+  var s=SDEFS[idx];
+  if(!confirm('Hide "'+s.ttl+'" for all customers? Restore via Hidden Items.')) return;
+  gstruct.hiddenSections[s.id]=true;
+  if(curStep>=SDEFS.length-1) curStep=0;
+  saveGStruct(); updateHiddenBtn(); rebuildAll(); toast('Phase hidden for all customers','👁️');
 }
 
 function rebuildAll(){
@@ -1404,11 +1393,11 @@ function promptAddCard(secIdx){
   // Add to this section's card list
   if(!SEC_CARDS[secIdx]) SEC_CARDS[secIdx] = [];
   SEC_CARDS[secIdx].push(cid);
-  rebuildAll();
-  // Navigate to the section that got the card
-  goTo(secIdx);
-  saveData();
-  toast(`Card "${title}" added`, '✓');
+  gstruct.newCards[cid]={title:title,fields:[],secIdx:secIdx};
+  gstruct.secCards=SEC_CARDS.map(function(a){return a.slice();});
+  saveGStruct();
+  rebuildAll(); goTo(secIdx);
+  toast('Card "'+title+'" added for all customers!','✓');
 }
 
 function renderCard(cid){
@@ -1438,25 +1427,22 @@ function renameCard(cid){
   const t=newTitle.trim();
   if(!t){toast('Name cannot be empty','⚠️');return;}
   c.title=t;
-  const el=document.getElementById('ctitle-'+cid);
+  var el=document.getElementById('ctitle-'+cid);
   if(el) el.textContent=t;
-  saveData(); toast('Section renamed','✓');
+  gstruct.cardTitles[cid]=t;
+  if(gstruct.newCards[cid]) gstruct.newCards[cid].title=t;
+  saveGStruct(); toast('Card renamed for all customers!','✓');
 }
 
 function deleteCard(cid){
-  const c=cards[cid]; if(!c) return;
-  if(!confirm(`Delete the entire "${c.title}" section and all its fields? This cannot be undone.`)) return;
-  // Remove from cards
-  delete cards[cid];
-  // Remove from SEC_CARDS
-  SEC_CARDS.forEach(arr=>{const i=arr.indexOf(cid);if(i>-1)arr.splice(i,1);});
-  // Remove DOM element
-  document.getElementById('card-'+cid)?.remove();
-  saveData(); toast('Section deleted','🗑');
+  var c=cards[cid]; if(!c) return;
+  if(!confirm('Hide "'+c.title+'" for all customers? Restore via Hidden Items.')) return;
+  gstruct.hiddenCards[cid]=true;
+  saveGStruct(); updateHiddenBtn(); rebuildAll(); toast('Card hidden for all customers','👁️');
 }
 
 function renderFields(cid){
-  return (cards[cid]?.fields||[]).map((f,fi)=>renderField(cid,fi,f)).join('');
+  return (cards[cid]?.fields||[]).map((f,fi)=>gstruct.hiddenFields[f.id]?'':renderField(cid,fi,f)).join('');
 }
 
 function refreshCard(cid){
@@ -1545,7 +1531,10 @@ function dzDrop(e,cid){
   if(cid===dragCid&&dest>dragFi)dest--;
   cards[cid].fields.splice(dest,0,moved);
   refreshCard(dragCid);if(cid!==dragCid)refreshCard(cid);
-  saveData();toast('Reordered!','↕');
+  [dragCid,cid].filter(function(v,i,a){return a.indexOf(v)===i;}).forEach(function(c){
+    gstruct.fieldOrder[c]=(cards[c]&&cards[c].fields||[]).map(function(f){return f.id;});
+  });
+  saveGStruct(); toast('Reordered for all customers!','↕');
 }
 
 // ══════════════════════════════════════════════════
@@ -1659,24 +1648,27 @@ function saveField(){
     condVal:     (condFieldId&&condVal) ? condVal     : null,
   };
   if(!cards[mCid].fields) cards[mCid].fields=[];
-  if(mFi!==null){cards[mCid].fields[mFi]=f; toast('Field updated!','✓');}
-  else{cards[mCid].fields.push(f); toast('Field added!','✓');}
-  refreshCard(mCid);
-  evalBranching(mCid);
-  saveData(); closeFM();
+  if(mFi!==null){
+    cards[mCid].fields[mFi]=f;
+    gstruct.fieldDefs[f.id]={lbl:f.lbl,type:f.type,hint:f.hint,ph:f.ph,opts:f.opts.slice(),condFieldId:f.condFieldId,condVal:f.condVal};
+    if(gstruct.newFields[mCid]){var ni=gstruct.newFields[mCid].findIndex(function(x){return x.id===f.id;});if(ni>=0)gstruct.newFields[mCid][ni]=JSON.parse(JSON.stringify(f));}
+    toast('Field updated for all customers!','✓');
+  } else {
+    cards[mCid].fields.push(f);
+    if(!gstruct.newFields[mCid]) gstruct.newFields[mCid]=[];
+    gstruct.newFields[mCid].push(JSON.parse(JSON.stringify(f)));
+    toast('Field added for all customers!','✓');
+  }
+  saveGStruct();
+  refreshCard(mCid); evalBranching(mCid); closeFM();
 }
 
 function delField(cid,fi){
-  if(!confirm('Delete this field?'))return;
-  const deletedId=cards[cid].fields[fi]?.id;
-  cards[cid].fields.splice(fi,1);
-  // Clean up any branches that pointed to the deleted field
-  if(deletedId){
-    cards[cid].fields.forEach(f=>{
-      if(f.condFieldId===deletedId){ f.condFieldId=null; f.condVal=null; }
-    });
-  }
-  refreshCard(cid); saveData(); toast('Field deleted','🗑');
+  if(!confirm('Hide this field for all customers? You can restore it via Hidden Items.'))return;
+  var fid=cards[cid].fields[fi]?.id; if(!fid) return;
+  gstruct.hiddenFields[fid]=true;
+  cards[cid].fields.forEach(function(f){if(f.condFieldId===fid){f.condFieldId=null;f.condVal=null;}});
+  saveGStruct(); updateHiddenBtn(); refreshCard(cid); toast('Field hidden for all customers','👁️');
 }
 
 // ══════════════════════════════════════════════════
