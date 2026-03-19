@@ -665,7 +665,8 @@ async function saveVerIndex(){
 
 function buildVerSelect(){
   const sel = document.getElementById('verSelect');
-  sel.innerHTML = verIndex.map(v=>`<option value="${v.id}"${v.id===curVerId?' selected':''}>${esc(v.name)}</option>`).join('');
+  const sorted = [...verIndex].sort((a,b)=>a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
+  sel.innerHTML = sorted.map(v=>`<option value="${v.id}"${v.id===curVerId?' selected':''}>${esc(v.name)}</option>`).join('');
   const cur = verIndex.find(v=>v.id===curVerId);
   document.getElementById('verBadge').textContent = cur ? cur.name : 'Default';
   document.getElementById('docId').textContent = `CI–${curVerId.slice(-4).toUpperCase()}`;
