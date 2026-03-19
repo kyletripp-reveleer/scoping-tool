@@ -459,7 +459,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
     <div class="ver-actions">
       <button class="btn btn-gh btn-sm" onclick="openVerModal()">⊕ New Customer</button>
       <button class="btn btn-gh btn-sm" onclick="auth(()=>openManageModal())">⚙ Manage</button>
-    <button class="btn btn-gh btn-sm" id="hiddenBtn" style="display:none" onclick="auth(()=>openHiddenModal())">👁 Hidden Items</button>
+    <button class="btn btn-gh btn-sm" onclick="auth(()=>openHiddenModal())" id="hiddenBtn" style="display:none">👁 Hidden Items</button>
       <button class="btn btn-pri btn-sm" onclick="exportVersion()">↓ Export Copy</button>
     </div>
   </div>
@@ -620,6 +620,19 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 </div>
 
 <!-- TOAST -->
+<!-- HIDDEN ITEMS MODAL -->
+<div class="ov" id="hiddenOv">
+  <div class="ov-bg" onclick="closeHiddenModal()"></div>
+  <div class="ov-box" style="width:500px;max-width:95vw;max-height:85vh;overflow-y:auto">
+    <div class="fm-hdr">
+      <div><h3>Hidden Items</h3><p>Restore fields, cards, or phases you previously hid.</p></div>
+      <button class="fm-x" onclick="closeHiddenModal()">✕</button>
+    </div>
+    <div class="fm-body" id="hiddenModalBody"></div>
+    <div class="fm-ftr"><button class="btn btn-gh" onclick="closeHiddenModal()">Close</button></div>
+  </div>
+</div>
+
 <div class="toast" id="toast"><div class="toast-bar"></div><span id="tIco"></span><span id="tMsg"></span></div>
 
 <script>
@@ -629,7 +642,17 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 const PW = '522522';
 const SK = 'ci-v5';
 const VER_INDEX_KEY = 'ci-ver-index'; // stores [{id,name,created}]
-const HIDDEN_KEY    = 'ci-hidden-global';
+const HIDDEN_KEY    = 'ci-hidden-global';    // global hidden flags (all customers)
+const STRUCTURE_KEY = 'ci-structure-global'; // global form structure overrides
+
+// ── SharePoint / Power Automate storage URLs ──────────────────────────────
+// Paste your Power Automate HTTP trigger URLs below to enable SharePoint sync.
+// Leave as-is to use local browser storage.
+const SP_GET_URL = 'https://default044b1e3171a44846afc99671d32d99.6f.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/ad99f7e5d3f845efa22430b05dc9c615/triggers/manual/paths/invoke?api-version=1
+';
+const SP_SET_URL = 'https://default044b1e3171a44846afc99671d32d99.6f.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/391d343d02ef4d888983f9c351320192/triggers/manual/paths/invoke?api-version=1
+';
+// ─────────────────────────────────────────────────────────────────────────
 
 // ══════════════════════════════════════════════════
 //  VERSION MANAGEMENT
@@ -638,6 +661,7 @@ let curVerId = 'default';
 let verIndex = [{id:'default', name:'Default', created: new Date().toISOString()}];
 
 function verStorageKey(id){ return `ci-v5-${id}`; }
+function deletedFieldsKey(id){ return `ci-delf-${id}`; }
 
 async function loadVerIndex(){
   try{
@@ -648,6 +672,22 @@ async function loadVerIndex(){
 
 async function saveVerIndex(){
   try{ await store.set(VER_INDEX_KEY,JSON.stringify(verIndex)); }catch(e){}
+}
+
+async function loadHidden(){
+  try{
+    const raw = await store.get(HIDDEN_KEY);
+    if(raw){
+      const h = JSON.parse(raw);
+      hidden.fields   = h.fields   || {};
+      hidden.cards    = h.cards    || {};
+      hidden.sections = h.sections || {};
+    }
+  }catch(e){}
+}
+
+async function saveHidden(){
+  try{ await store.set(HIDDEN_KEY, JSON.stringify(hidden)); }catch(e){}
 }
 
 function buildVerSelect(){
@@ -663,8 +703,7 @@ async function switchVersion(id){
   // Save current version first
   await saveData();
   curVerId = id;
-  // Reset to defaults before loading new version
-  cards = defaultCards();
+  // Reset section layout — loadData will rebuild cards from defaultCards() and restore answers
   SDEFS = [
     {id:'s0',ico:'🏥',ttl:'Customer Profile',       sub:'Identify the customer type and buying organization'},
     {id:'s1',ico:'⚙️',ttl:'Platform Configuration', sub:'Lines of business, members, risk & care gaps'},
@@ -684,8 +723,6 @@ async function switchVersion(id){
   buildNav();
   updProg();
   Object.keys(cards).forEach(cid=>{ attachBranchListeners(cid); evalBranching(cid); });
-  migrateValFromDom();
-  updateHiddenBtn();
   await loadPipeData();
   if (currentMode === 'pipeline') buildPipeline();
   toast(`Switched to: ${verIndex.find(v=>v.id===id)?.name||id}`,'📋');
@@ -709,23 +746,9 @@ async function createVersion(){
   // Save current state first
   await saveData();
 
-  // Always copy current form structure; strip answers so new customer starts blank
-  {
-    const snapshot = JSON.parse(JSON.stringify({cards, sdefs: SDEFS, secCards: SEC_CARDS}));
-    const allDefaults = Object.keys(defaultCards());
-    const deleted = allDefaults.filter(cid => !cards[cid]);
-    Object.keys(snapshot.cards).forEach(cid => {
-      (snapshot.cards[cid]?.fields || []).forEach(f => { delete f.val; });
-    });
-    try {
-      await store.set(verStorageKey(id), JSON.stringify({
-        cards: snapshot.cards,
-        deleted,
-        sdefs: snapshot.sdefs,
-        secCards: snapshot.secCards
-      }));
-    } catch(e){}
-  }
+  // New customer starts completely blank — no snapshot needed.
+  // loadData() will build from defaultCards() and apply global hidden flags.
+  // Nothing to pre-save; the key simply won't exist yet.
 
   verIndex.push({id, name, created: new Date().toISOString()});
   await saveVerIndex();
@@ -989,7 +1012,17 @@ function defaultCards(){
 // ══════════════════════════════════════════════════
 //  STATE
 // ══════════════════════════════════════════════════
-let cards = defaultCards();   // { cid: { title, fields[] } }
+let cards = {};   // populated by loadData() — never pre-fill with defaults
+let hidden    = { fields:{}, cards:{}, sections:{} }; // items hidden by user (persisted)
+let structure = {                                      // global form structure overrides
+  fields: {},       // { [fieldId]: field definition overrides }
+  newFields: {},    // { [cid]: [field, ...] } user-added fields
+  cards: {},        // { [cid]: { title } } card title overrides
+  newCards: {},     // { [cid]: { title, fields:[], secIdx } } user-added cards
+  sdefs: null,      // phase list (null = use defaults)
+  secCards: null,   // section map (null = use defaults)
+  fieldOrder: {},   // { [cid]: [fieldId,...] } drag-drop order
+};
 let curStep = 0;
 let authed = false;
 let pendingFn = null;
@@ -1026,11 +1059,25 @@ function closePin(){ document.getElementById('pinOv').classList.remove('on'); pe
 //  In browser: uses localStorage (persists locally).
 // ══════════════════════════════════════════════════
 const inClaude = typeof window.storage !== 'undefined' && typeof window.storage.get === 'function';
+const inSharePoint = !inClaude &&
+  SP_GET_URL !== 'PASTE_YOUR_GET_FLOW_URL_HERE' &&
+  SP_SET_URL !== 'PASTE_YOUR_SET_FLOW_URL_HERE';
 
 const store = {
   async get(key){
     if(inClaude){
       try{ const r=await window.storage.get(key,true); return r?.value??null; }catch(e){ return null; }
+    } else if(inSharePoint){
+      try{
+        const r = await fetch(SP_GET_URL, {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({action:'get', key})
+        });
+        if(!r.ok) return localStorage.getItem(key); // fallback
+        const j = await r.json();
+        return j.value ?? null;
+      }catch(e){ return localStorage.getItem(key); } // fallback on network error
     } else {
       return localStorage.getItem(key);
     }
@@ -1038,6 +1085,15 @@ const store = {
   async set(key,val){
     if(inClaude){
       await window.storage.set(key,val,true);
+    } else if(inSharePoint){
+      try{
+        await fetch(SP_SET_URL, {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({action:'set', key, value:val})
+        });
+      }catch(e){}
+      localStorage.setItem(key,val); // always mirror to localStorage as offline cache
     } else {
       localStorage.setItem(key,val);
     }
@@ -1045,6 +1101,15 @@ const store = {
   async del(key){
     if(inClaude){
       try{ await window.storage.delete(key,true); }catch(e){}
+    } else if(inSharePoint){
+      try{
+        await fetch(SP_SET_URL, {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({action:'del', key})
+        });
+      }catch(e){}
+      localStorage.removeItem(key);
     } else {
       localStorage.removeItem(key);
     }
@@ -1058,83 +1123,156 @@ function setSync(s,l){
   document.getElementById('syncLbl').textContent=l;
 }
 
+async function loadVerIndex(){
+  try{
+    const val=await store.get(VER_INDEX_KEY);
+    if(val){ const parsed=JSON.parse(val); if(Array.isArray(parsed)&&parsed.length) verIndex=parsed; }
+  }catch(e){}
+}
+
+async function saveVerIndex(){
+  try{ await store.set(VER_INDEX_KEY,JSON.stringify(verIndex)); }catch(e){}
+}
+
+async function loadStructure(){
+  try{
+    const raw = await store.get(STRUCTURE_KEY);
+    if(raw){
+      const s = JSON.parse(raw);
+      structure.fields    = s.fields    || {};
+      structure.newFields = s.newFields || {};
+      structure.cards     = s.cards     || {};
+      structure.newCards  = s.newCards  || {};
+      structure.sdefs     = s.sdefs     || null;
+      structure.secCards  = s.secCards  || null;
+      structure.fieldOrder= s.fieldOrder|| {};
+    }
+  }catch(e){ console.error('[loadStructure]',e); }
+}
+
+async function saveStructure(){
+  try{ await store.set(STRUCTURE_KEY, JSON.stringify(structure)); }catch(e){}
+}
+
+// Apply global structure overrides on top of a fresh defaultCards() snapshot.
+// Called from loadData() after cards is reset to defaultCards().
+function applyStructure(){
+  // 1. Apply field definition overrides (label, type, opts, hint, etc.)
+  Object.keys(structure.fields).forEach(fid => {
+    const override = structure.fields[fid];
+    Object.values(cards).forEach(card => {
+      const f = (card.fields||[]).find(x => x.id === fid);
+      if(f) Object.assign(f, override);
+    });
+  });
+
+  // 2. Apply field order overrides per card
+  Object.keys(structure.fieldOrder).forEach(cid => {
+    if(!cards[cid]) return;
+    const order = structure.fieldOrder[cid];
+    const fieldMap = {};
+    (cards[cid].fields||[]).forEach(f => { fieldMap[f.id] = f; });
+    // Also include any newFields for this card
+    (structure.newFields[cid]||[]).forEach(f => { fieldMap[f.id] = f; });
+    const ordered = [];
+    order.forEach(fid => { if(fieldMap[fid]) ordered.push(fieldMap[fid]); });
+    // Append any fields not in the order list (newly added to defaultCards since last reorder)
+    Object.values(fieldMap).forEach(f => { if(!order.includes(f.id)) ordered.push(f); });
+    cards[cid].fields = ordered;
+  });
+
+  // 3. Apply user-added fields (not in defaultCards)
+  Object.keys(structure.newFields).forEach(cid => {
+    if(!cards[cid]) return;
+    const existingIds = new Set((cards[cid].fields||[]).map(f=>f.id));
+    (structure.newFields[cid]||[]).forEach(f => {
+      if(!existingIds.has(f.id)) cards[cid].fields.push(f);
+    });
+  });
+
+  // 4. Apply card title overrides
+  Object.keys(structure.cards).forEach(cid => {
+    if(cards[cid] && structure.cards[cid].title) cards[cid].title = structure.cards[cid].title;
+  });
+
+  // 5. Apply user-added cards
+  Object.keys(structure.newCards).forEach(cid => {
+    if(!cards[cid]){
+      const nc = structure.newCards[cid];
+      cards[cid] = { title: nc.title, fields: nc.fields || [] };
+      // Add to SEC_CARDS if not already placed
+      const secIdx = nc.secIdx;
+      if(secIdx !== undefined && SEC_CARDS[secIdx] && !SEC_CARDS[secIdx].includes(cid)){
+        SEC_CARDS[secIdx].push(cid);
+      }
+    }
+  });
+
+  // 6. Apply phase/section overrides
+  if(structure.sdefs && structure.sdefs.length){
+    SDEFS.length = 0;
+    structure.sdefs.forEach(s => SDEFS.push(s));
+  }
+  if(structure.secCards && structure.secCards.length){
+    SEC_CARDS.length = 0;
+    structure.secCards.forEach(a => SEC_CARDS.push(a));
+  }
+}
 
 async function loadData(){
   try{
-    const val=await store.get(verStorageKey(curVerId));
-    if(val){
-      const saved=JSON.parse(val);
-      // Restore section/phase definitions
-      if(Array.isArray(saved.sdefs) && saved.sdefs.length) SDEFS = saved.sdefs;
-      if(Array.isArray(saved.secCards) && saved.secCards.length){
-        SEC_CARDS.length = 0;
-        saved.secCards.forEach(arr => SEC_CARDS.push(arr));
-      }
-      if(saved.cards){
-        Object.keys(saved.cards).forEach(cid=>{
-          if(!cards[cid]) cards[cid] = {title: saved.cards[cid].title || cid, fields:[]};
-          cards[cid].fields=saved.cards[cid].fields;
-          if(saved.cards[cid].title) cards[cid].title=saved.cards[cid].title;
+    // Always build cards fresh from defaultCards(), then apply global structure overrides.
+    cards = JSON.parse(JSON.stringify(defaultCards()));
+    applyStructure(); // apply global field edits, new fields, card renames, phase changes
+
+    // Restore per-customer answers
+    const raw = await store.get(verStorageKey(curVerId));
+    const saved = raw ? JSON.parse(raw) : null;
+
+    if(saved){
+      // Pour saved answers onto fields by matching field ID.
+      const vals = saved.vals || {};
+
+      // Legacy support: if old format (saved.cards), extract vals from it
+      if(!saved.vals && saved.cards){
+        Object.values(saved.cards).forEach(card => {
+          (card.fields || []).forEach(f => {
+            if(f.id && f.val !== undefined && f.val !== null && f.val !== '') vals[f.id] = f.val;
+          });
         });
       }
-      if(Array.isArray(saved.deleted)){
-        saved.deleted.forEach(cid=>{
-          delete cards[cid];
-          SEC_CARDS.forEach(arr=>{const i=arr.indexOf(cid);if(i>-1)arr.splice(i,1);});
+
+      Object.values(cards).forEach(card => {
+        (card.fields || []).forEach(f => {
+          if(vals[f.id] !== undefined) f.val = vals[f.id];
         });
-      }
-      // ── Merge any new builtin cards added since this snapshot was saved ──
-      const defaults = defaultCards();
-      // Map of cid → preferred section title (for fuzzy matching against saved SDEFS)
-      const cidSectionHint = {
-        'c0-org':'Customer Profile',
-        'c1-platform':'Platform Configuration','c1-lob':'Platform Configuration','c1-risk':'Platform Configuration','c1-core':'Platform Configuration',
-        'c2-workflows':'Workflow Configuration','c2-poc':'Workflow Configuration',
-        'c3-native':'POC Integration','c3-uni':'POC Integration',
-        'c4-data':'Data Sources',
-        'c5-coding':'Coding Services','c5-notes':'Coding Services',
-      };
-      const defaultSecCards = [['c0-org'],['c1-platform','c1-lob','c1-risk'],['c2-workflows','c2-poc','c3-native','c3-uni'],[],['c4-data'],['c5-coding','c5-notes'],['c1-core'],[]];
-      Object.keys(defaults).forEach(cid => {
-        // Add missing card to cards object
-        if (!cards[cid]) cards[cid] = defaults[cid];
-        // Add to SEC_CARDS if not already present anywhere
-        const alreadyPlaced = SEC_CARDS.some(arr => arr.includes(cid));
-        if (!alreadyPlaced) {
-          // Try to find section by title hint first
-          const hint = cidSectionHint[cid] || '';
-          let targetSi = -1;
-          if (hint) {
-            targetSi = SDEFS.findIndex(s => s.ttl.toLowerCase().includes(hint.toLowerCase().split(' ')[0]));
-          }
-          // Fallback: use default section index
-          if (targetSi === -1) {
-            defaultSecCards.forEach((arr, si) => { if (arr.includes(cid) && si < SEC_CARDS.length) targetSi = si; });
-          }
-          if (targetSi >= 0 && SEC_CARDS[targetSi]) SEC_CARDS[targetSi].push(cid);
-        }
       });
     }
-    setSync('ok', inClaude ? 'Synced' : 'Saved locally');
-  }catch(e){ setSync('ok','Ready'); }
+
+    setSync('ok', inClaude ? 'Synced' : inSharePoint ? 'Saved to SharePoint' : 'Saved locally');
+  }catch(e){ console.error('[loadData]', e); setSync('ok','Ready'); }
 }
 
 async function saveData(){
   setSync('sy','Saving…');
   try{
-    const allDefaults=Object.keys(defaultCards());
-    const deleted=allDefaults.filter(cid=>!cards[cid]);
-    const cardsPayload={};
-    Object.keys(cards).forEach(cid=>{
-      cardsPayload[cid]={title:cards[cid].title,fields:cards[cid].fields};
+    // Save ONLY field values (answers), keyed by field ID.
+    // Field structure always comes from defaultCards() in the HTML — never persisted.
+    const vals = {};
+    Object.values(cards).forEach(card => {
+      (card.fields || []).forEach(f => {
+        if(f.val !== undefined && f.val !== null && f.val !== '' && !(Array.isArray(f.val) && f.val.length === 0)){
+          vals[f.id] = f.val;
+        }
+      });
     });
-    await store.set(verStorageKey(curVerId),JSON.stringify({
-      cards:cardsPayload, deleted,
-      sdefs: SDEFS,
+    await store.set(verStorageKey(curVerId), JSON.stringify({
+      vals,
+      sdefs:    SDEFS,
       secCards: SEC_CARDS,
     }));
-    setSync('ok', inClaude ? 'Saved · shared' : 'Saved locally');
-    setTimeout(()=>setSync('ok', inClaude ? 'Synced' : 'Saved locally'),2200);
+    setSync('ok', inClaude ? 'Saved · shared' : inSharePoint ? 'Saved to SharePoint' : 'Saved locally');
+    setTimeout(()=>setSync('ok', inClaude ? 'Synced' : inSharePoint ? 'SharePoint ✓' : 'Saved locally'),2200);
   }catch(e){ setSync('er','Save failed'); toast('Could not save','⚠️'); }
 }
 
@@ -1209,55 +1347,39 @@ async function resetForm() {
   toast('Form reset ✓', '↺');
 }
 
-async function loadHidden(){
-  try{
-    const raw=localStorage.getItem(HIDDEN_KEY);
-    if(raw){ const h=JSON.parse(raw); hidden.fields=h.fields||{}; hidden.cards=h.cards||{}; hidden.sections=h.sections||{}; }
-  }catch(e){}
-}
-function saveHidden(){ try{ localStorage.setItem(HIDDEN_KEY,JSON.stringify(hidden)); }catch(e){} }
-function updateHiddenBtn(){
-  const any=Object.keys(hidden.fields).length||Object.keys(hidden.cards).length||Object.keys(hidden.sections).length;
-  const b=document.getElementById('hiddenBtn'); if(b) b.style.display=any?'':'none';
-}
-function openHiddenModal(){ renderHiddenModal(); document.getElementById('hiddenOv').classList.add('on'); }
-function closeHiddenModal(){ document.getElementById('hiddenOv').classList.remove('on'); }
-function renderHiddenModal(){
-  const defs=defaultCards(); let html='';
-  const hs=SDEFS.filter(s=>hidden.sections[s.id]);
-  if(hs.length){ html+='<div class="ml">Hidden Phases</div>'; hs.forEach(s=>{ html+=`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--s2);border:1px solid var(--bd);border-radius:7px;margin-bottom:8px"><span>${esc(s.ico)} <strong>${esc(s.ttl)}</strong></span><button class="btn btn-gh btn-sm" onclick="restoreSection('${s.id}')">↩ Restore</button></div>`; }); }
-  const hc=Object.keys(hidden.cards);
-  if(hc.length){ html+='<div class="ml" style="margin-top:14px">Hidden Cards</div>'; hc.forEach(cid=>{ const t=(defs[cid]||cards[cid]||{}).title||cid; html+=`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--s2);border:1px solid var(--bd);border-radius:7px;margin-bottom:8px"><span><strong>${esc(t)}</strong></span><button class="btn btn-gh btn-sm" onclick="restoreCard('${cid}')">↩ Restore</button></div>`; }); }
-  const hf=Object.keys(hidden.fields);
-  if(hf.length){ html+='<div class="ml" style="margin-top:14px">Hidden Fields</div>'; hf.forEach(fid=>{ let lbl=fid; Object.values(defs).forEach(c=>(c.fields||[]).forEach(f=>{ if(f.id===fid) lbl=f.lbl; })); html+=`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--s2);border:1px solid var(--bd);border-radius:7px;margin-bottom:8px"><span>${esc(lbl)}</span><button class="btn btn-gh btn-sm" onclick="restoreField('${fid}')">↩ Restore</button></div>`; }); }
-  if(!html) html='<p style="color:var(--mu);font-size:12px;text-align:center;padding:20px 0">No hidden items.</p>';
-  document.getElementById('hiddenModalBody').innerHTML=html;
-}
-function restoreSection(sid){ delete hidden.sections[sid]; updateHiddenBtn(); rebuildAll(); saveHidden(); renderHiddenModal(); toast('Phase restored','↩'); }
-function restoreCard(cid){ delete hidden.cards[cid]; updateHiddenBtn(); rebuildAll(); saveHidden(); renderHiddenModal(); toast('Card restored','↩'); }
-function restoreField(fid){
-  delete hidden.fields[fid];
-  Object.keys(cards).forEach(cid=>{ if((cards[cid]?.fields||[]).some(f=>f.id===fid)) refreshCard(cid); });
-  updateHiddenBtn(); saveHidden(); renderHiddenModal(); toast('Field restored','↩');
-}
-
 async function init(){
-  setSync('sy','Loading…');
-  await loadVerIndex();
-  await loadHidden();
-  await loadData();
+  // Safety net: always hide loader after 8 seconds no matter what
+  const loaderTimeout = setTimeout(()=>{
+    document.getElementById('ldr').classList.add('off');
+    setSync('ok','Ready');
+  }, 8000);
+
+  try{
+    setSync('sy','Loading…');
+    await loadVerIndex();
+    await loadStructure();
+    await loadHidden();
+    await loadData();
+  } catch(e){ console.error('[init] load error:', e); }
+
+  // Always hide loader and render — even if load failed
+  clearTimeout(loaderTimeout);
   document.getElementById('ldr').classList.add('off');
-  buildVerSelect();
-  buildNav(); buildSections(); updProg();
-  Object.keys(cards).forEach(cid=>{
-    attachBranchListeners(cid);
-    evalBranching(cid);
-  });
-  migrateValFromDom();
+
+  try{ buildVerSelect(); } catch(e){ console.error('[init] buildVerSelect:', e); }
+  try{ buildNav(); buildSections(); updProg(); } catch(e){ console.error('[init] buildSections:', e); }
+  try{
+    Object.keys(cards).forEach(cid=>{
+      attachBranchListeners(cid);
+      evalBranching(cid);
+    });
+  } catch(e){ console.error('[init] branching:', e); }
+  try{ await loadPipeGlobal(); } catch(e){ console.error('[init] pipeGlobal:', e); }
+  try{ await loadPipeData(); } catch(e){ console.error('[init] pipeData:', e); }
+  try{ hookPipelineLiveUpdates(); } catch(e){ console.error('[init] pipeHook:', e); }
+
   updateHiddenBtn();
-  await loadPipeGlobal();
-  await loadPipeData();
-  hookPipelineLiveUpdates();
+  setSync('ok', inClaude ? 'Synced' : inSharePoint ? 'Saved to SharePoint' : 'Saved locally');
 }
 
 // ══════════════════════════════════════════════════
@@ -1272,28 +1394,38 @@ function goTo(n){ document.getElementById('nb'+curStep)?.classList.remove('on');
 // ══════════════════════════════════════════════════
 function buildSections(){
   const summaryIdx = SDEFS.length - 1;
+  // Filter out hidden sections before rendering (but keep summary always)
+  const visibleSDEFS = SDEFS.filter((s,i) => i === summaryIdx || !hidden.sections[s.id]);
+  const visibleIdxMap = {}; // original idx -> visible idx
+  let vi = 0;
+  SDEFS.forEach((s,i) => { if(i === summaryIdx || !hidden.sections[s.id]){ visibleIdxMap[i]=vi; vi++; } });
+  const visibleLen = visibleSDEFS.length;
+
   document.getElementById('wrap').innerHTML=SDEFS.map((s,i)=>{
-    if(i!==summaryIdx && hidden.sections[s.id]) return '';
+    // Skip hidden sections entirely
+    if(i !== summaryIdx && hidden.sections[s.id]) return '';
+
     const isSummary = i === summaryIdx;
+    const vi = visibleIdxMap[i] ?? i;
     const editBtns = !isSummary ? `
       <div class="sec-h-acts">
         <button class="sec-h-act" onclick="auth(()=>openSecModal(${i}))">✏️ Edit</button>
-        ${SDEFS.length > 2 ? `<button class="sec-h-act danger" onclick="auth(()=>deleteSection(${i}))">🗑</button>` : ''}
+        ${SDEFS.length > 2 ? `<button class="sec-h-act danger" onclick="auth(()=>deleteSection(${i}))">🗑 Hide</button>` : ''}
         <button class="sec-h-act add-sec" onclick="auth(()=>openSecModal(-1,${i}))">＋ Add Phase After</button>
       </div>` : '';
 
     let cardHtml = '';
     if(!isSummary){
-      const cids = SEC_CARDS[i] || [];
+      const cids = (SEC_CARDS[i] || []).filter(cid => !hidden.cards[cid]);
       if(cids.length === 0){
         cardHtml = `
           <div class="sec-empty">
             <div class="sec-empty-ico">📭</div>
-            <p>This phase has no cards yet. Add a card to start building it out.</p>
+            <p>This phase has no visible cards. Add a card or restore hidden ones.</p>
             <button class="btn-add-card" onclick="auth(()=>promptAddCard(${i}))">＋ Add Card</button>
           </div>`;
       } else {
-        cardHtml = cids.filter(cid=>!hidden.cards[cid]).map(cid=>renderCard(cid)).join('');
+        cardHtml = cids.map(cid=>renderCard(cid)).join('');
         cardHtml += `<div class="add-card-row"><button class="btn-add-card" onclick="auth(()=>promptAddCard(${i}))">＋ Add Another Card</button></div>`;
       }
     } else {
@@ -1301,7 +1433,7 @@ function buildSections(){
     }
 
     return `
-    <div class="sec ${i===0?'on':''}" id="sec${i}">
+    <div class="sec ${vi===0?'on':''}" id="sec${i}">
       <div class="sec-h">
         <div class="sec-ico">${s.ico}</div>
         <div class="sec-h-info">
@@ -1311,7 +1443,7 @@ function buildSections(){
         ${editBtns}
       </div>
       ${cardHtml}
-      ${!isSummary ? `<div class="nav-row">${i>0?`<button class="btn btn-gh" onclick="goTo(${i-1})">← Back</button>`:'<div></div>'}<button class="btn btn-pri" onclick="goTo(${i+1})">${i===summaryIdx-1?'Review Summary →':'Next: '+SDEFS[i+1].ttl.split(' ')[0]+' →'}</button></div>` : ''}
+      ${!isSummary ? `<div class="nav-row">${vi>0?`<button class="btn btn-gh" onclick="goTo(${i-1})">← Back</button>`:'<div></div>'}<button class="btn btn-pri" onclick="goTo(${i+1})">${vi===visibleLen-2?'Review Summary →':'Next: '+SDEFS[i+1]?.ttl.split(' ')[0]+' →'}</button></div>` : ''}
     </div>`;
   }).join('');
 }
@@ -1374,16 +1506,19 @@ function saveSecModal(){
 
   closeSecModal();
   rebuildAll();
-  saveData();
+  // Save phase structure globally
+  structure.sdefs    = SDEFS.map(s=>({...s}));
+  structure.secCards = SEC_CARDS.map(a=>[...a]);
+  saveStructure();
 }
 
 function deleteSection(idx){
-  if(SDEFS.length<=2){ toast('Cannot hide the only phase','⚠️'); return; }
-  const s=SDEFS[idx];
-  if(!confirm('Hide "'+s.ttl+'" phase? You can restore it from the Hidden Items menu.')) return;
-  hidden.sections[s.id]=true;
-  if(curStep>=SDEFS.length-1) curStep=0;
-  updateHiddenBtn(); rebuildAll(); saveHidden(); toast('Phase hidden','👁️');
+  if(SDEFS.length <= 2){ toast('Cannot hide the only phase','⚠️'); return; }
+  const s = SDEFS[idx];
+  if(!confirm('Hide the "' + s.ttl + '" phase? You can restore it from the Hidden Items menu.')) return;
+  hidden.sections[s.id] = true;
+  if(curStep >= SDEFS.length - 1) curStep = 0;
+  updateHiddenBtn(); rebuildAll(); saveHidden(); toast('Phase hidden — restore anytime via Hidden Items','👁️');
 }
 
 function rebuildAll(){
@@ -1411,11 +1546,13 @@ function promptAddCard(secIdx){
   // Add to this section's card list
   if(!SEC_CARDS[secIdx]) SEC_CARDS[secIdx] = [];
   SEC_CARDS[secIdx].push(cid);
+  // Save new card globally so it appears for all customers
+  structure.newCards[cid] = { title, fields: [], secIdx };
+  structure.secCards = SEC_CARDS.map(a=>[...a]);
   rebuildAll();
-  // Navigate to the section that got the card
   goTo(secIdx);
-  saveData();
-  toast(`Card "${title}" added`, '✓');
+  saveStructure();
+  toast('Card "' + title + '" added — visible to all customers!', '✓');
 }
 
 function renderCard(cid){
@@ -1447,18 +1584,22 @@ function renameCard(cid){
   c.title=t;
   const el=document.getElementById('ctitle-'+cid);
   if(el) el.textContent=t;
-  saveData(); toast('Section renamed','✓');
+  // Save title override globally
+  if(!structure.cards[cid]) structure.cards[cid]={};
+  structure.cards[cid].title = t;
+  if(structure.newCards[cid]) structure.newCards[cid].title = t;
+  saveStructure(); toast('Card renamed — applies to all customers!','✓');
 }
 
 function deleteCard(cid){
   const c=cards[cid]; if(!c) return;
-  if(!confirm('Hide "'+c.title+'"? You can restore it from the Hidden Items menu.')) return;
-  hidden.cards[cid]=true;
-  updateHiddenBtn(); rebuildAll(); saveHidden(); toast('Card hidden','👁️');
+  if(!confirm('Hide the "' + c.title + '" card and all its fields? You can restore it from the Hidden Items menu.')) return;
+  hidden.cards[cid] = true;
+  updateHiddenBtn(); rebuildAll(); saveHidden(); toast('Card hidden — restore anytime via Hidden Items','👁️');
 }
 
 function renderFields(cid){
-  return (cards[cid]?.fields||[]).map((f,fi)=>hidden.fields[f.id]?'':renderField(cid,fi,f)).join('');
+  return (cards[cid]?.fields||[]).map((f,fi)=>hidden.fields[f.id] ? '' : renderField(cid,fi,f)).join('');
 }
 
 function refreshCard(cid){
@@ -1547,7 +1688,11 @@ function dzDrop(e,cid){
   if(cid===dragCid&&dest>dragFi)dest--;
   cards[cid].fields.splice(dest,0,moved);
   refreshCard(dragCid);if(cid!==dragCid)refreshCard(cid);
-  saveData();toast('Reordered!','↕');
+  // Save field order globally
+  [dragCid, cid].filter((v,i,a)=>a.indexOf(v)===i).forEach(c=>{
+    structure.fieldOrder[c] = (cards[c]?.fields||[]).map(f=>f.id);
+  });
+  saveStructure(); toast('Reordered — order applies to all customers!','↕');
 }
 
 // ══════════════════════════════════════════════════
@@ -1661,19 +1806,38 @@ function saveField(){
     condVal:     (condFieldId&&condVal) ? condVal     : null,
   };
   if(!cards[mCid].fields) cards[mCid].fields=[];
-  if(mFi!==null){cards[mCid].fields[mFi]=f; toast('Field updated!','✓');}
-  else{cards[mCid].fields.push(f); toast('Field added!','✓');}
+  if(mFi!==null){
+    cards[mCid].fields[mFi]=f;
+    // Save field definition override globally (all customers see the change)
+    structure.fields[f.id] = { lbl:f.lbl, type:f.type, hint:f.hint, ph:f.ph, opts:[...f.opts],
+      condFieldId:f.condFieldId, condVal:f.condVal };
+    // If this field is in newFields, update it there too
+    if(structure.newFields[mCid]){
+      const ni = structure.newFields[mCid].findIndex(x=>x.id===f.id);
+      if(ni>=0) structure.newFields[mCid][ni] = {...f};
+    }
+    toast('Field updated — change applies to all customers!','✓');
+  } else {
+    cards[mCid].fields.push(f);
+    // Save new field to global newFields
+    if(!structure.newFields[mCid]) structure.newFields[mCid]=[];
+    structure.newFields[mCid].push({...f});
+    toast('Field added — visible to all customers!','✓');
+  }
   refreshCard(mCid);
   evalBranching(mCid);
-  saveData(); closeFM();
+  saveStructure(); closeFM();
 }
 
 function delField(cid,fi){
-  if(!confirm('Hide this field? You can restore it from the Hidden Items menu.'))return;
-  const fid=cards[cid]?.fields[fi]?.id; if(!fid) return;
-  hidden.fields[fid]=true;
-  cards[cid].fields.forEach(f=>{ if(f.condFieldId===fid){f.condFieldId=null;f.condVal=null;} });
-  updateHiddenBtn(); refreshCard(cid); saveHidden(); toast('Field hidden','👁️');
+  if(!confirm('Hide this field? It will be hidden for all customers. You can restore it from the Hidden Items menu.'))return;
+  const fid=cards[cid].fields[fi]?.id;
+  if(!fid) return;
+  hidden.fields[fid] = true;
+  cards[cid].fields.forEach(f=>{
+    if(f.condFieldId===fid){ f.condFieldId=null; f.condVal=null; }
+  });
+  updateHiddenBtn(); refreshCard(cid); saveHidden(); toast('Field hidden — restore anytime via Hidden Items','👁️');
 }
 
 // ══════════════════════════════════════════════════
@@ -3029,14 +3193,107 @@ function hookPipelineLiveUpdates() {
 }
 
 
-(async()=>{
-  const t=setTimeout(()=>{
-    document.getElementById('ldr').classList.add('off');
-  },4000);
-  try{ await init(); }catch(e){ console.error('[init]',e); }
-  clearTimeout(t);
-  document.getElementById('ldr').classList.add('off');
-})();
+// ══════════════════════════════════════════════════
+//  HIDDEN ITEMS MANAGER
+// ══════════════════════════════════════════════════
+
+function updateHiddenBtn(){
+  const anyHidden = Object.keys(hidden.fields).length > 0 ||
+                    Object.keys(hidden.cards).length > 0 ||
+                    Object.keys(hidden.sections).length > 0;
+  document.getElementById('hiddenBtn').style.display = anyHidden ? '' : 'none';
+}
+
+function openHiddenModal(){
+  renderHiddenModal();
+  document.getElementById('hiddenOv').classList.add('on');
+}
+function closeHiddenModal(){
+  document.getElementById('hiddenOv').classList.remove('on');
+}
+
+function renderHiddenModal(){
+  const defaults = defaultCards();
+  let html = '';
+
+  // Hidden sections
+  const hiddenSecs = SDEFS.filter(s => hidden.sections[s.id]);
+  if(hiddenSecs.length){
+    html += '<div class="ml">Hidden Phases</div>';
+    hiddenSecs.forEach(s => {
+      html += `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--s2);border:1px solid var(--bd);border-radius:7px;margin-bottom:8px">
+        <span>${esc(s.ico)} <strong>${esc(s.ttl)}</strong></span>
+        <button class="btn btn-gh btn-sm" onclick="restoreSection('${s.id}')">↩ Restore</button>
+      </div>`;
+    });
+  }
+
+  // Hidden cards
+  const hiddenCardIds = Object.keys(hidden.cards);
+  if(hiddenCardIds.length){
+    html += '<div class="ml" style="margin-top:14px">Hidden Cards</div>';
+    hiddenCardIds.forEach(cid => {
+      const card = defaults[cid] || cards[cid];
+      const title = card ? card.title : cid;
+      html += `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--s2);border:1px solid var(--bd);border-radius:7px;margin-bottom:8px">
+        <span><strong>${esc(title)}</strong></span>
+        <button class="btn btn-gh btn-sm" onclick="restoreCard('${cid}')">↩ Restore</button>
+      </div>`;
+    });
+  }
+
+  // Hidden fields
+  const hiddenFieldIds = Object.keys(hidden.fields);
+  if(hiddenFieldIds.length){
+    html += '<div class="ml" style="margin-top:14px">Hidden Fields</div>';
+    hiddenFieldIds.forEach(fid => {
+      // Find the field label by searching all cards
+      let lbl = fid;
+      Object.values(defaults).forEach(card => {
+        (card.fields||[]).forEach(f => { if(f.id === fid) lbl = f.lbl; });
+      });
+      html += `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--s2);border:1px solid var(--bd);border-radius:7px;margin-bottom:8px">
+        <span>${esc(lbl)}</span>
+        <button class="btn btn-gh btn-sm" onclick="restoreField('${fid}')">↩ Restore</button>
+      </div>`;
+    });
+  }
+
+  if(!html) html = '<p style="color:var(--mu);font-size:12px;text-align:center;padding:20px 0">No hidden items.</p>';
+  document.getElementById('hiddenModalBody').innerHTML = html;
+}
+
+function restoreSection(sid){
+  delete hidden.sections[sid];
+  updateHiddenBtn();
+  rebuildAll(); saveHidden();
+  renderHiddenModal();
+  toast('Phase restored','↩');
+}
+
+function restoreCard(cid){
+  delete hidden.cards[cid];
+  updateHiddenBtn();
+  rebuildAll(); saveHidden();
+  renderHiddenModal();
+  toast('Card restored','↩');
+}
+
+function restoreField(fid){
+  delete hidden.fields[fid];
+  // Find which card this field belongs to and refresh it
+  Object.keys(cards).forEach(cid => {
+    if((cards[cid]?.fields||[]).some(f => f.id === fid)){
+      refreshCard(cid);
+    }
+  });
+  updateHiddenBtn();
+  saveHidden();
+  renderHiddenModal();
+  toast('Field restored','↩');
+}
+
+init().catch(e=>{ console.error('[init] fatal:', e); document.getElementById('ldr').classList.add('off'); setSync('ok','Ready'); });
 </script>
 
 <!-- TASK EDIT MODAL -->
@@ -3118,23 +3375,5 @@ function hookPipelineLiveUpdates() {
   </div>
 </div>
 
-
-<!-- HIDDEN ITEMS MODAL -->
-<div class="ov" id="hiddenOv">
-  <div class="ov-bg" onclick="closeHiddenModal()"></div>
-
-
-<!-- HIDDEN ITEMS MODAL -->
-<div class="ov" id="hiddenOv">
-  <div class="ov-bg" onclick="closeHiddenModal()"></div>
-  <div class="ov-box" style="width:500px;max-width:95vw;max-height:85vh;overflow-y:auto">
-    <div class="fm-hdr">
-      <div><h3>Hidden Items</h3><p>Restore fields, cards, or phases you previously hid.</p></div>
-      <button class="fm-x" onclick="closeHiddenModal()">✕</button>
-    </div>
-    <div class="fm-body" id="hiddenModalBody"></div>
-    <div class="fm-ftr"><button class="btn btn-gh" onclick="closeHiddenModal()">Close</button></div>
-  </div>
-</div>
 </body>
 </html>
