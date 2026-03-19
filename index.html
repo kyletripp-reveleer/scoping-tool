@@ -1070,28 +1070,35 @@ const store = {
     }).catch(function(e){ console.warn('[SP del failed]',e); });
   },
 
-  // Pull all keys from SharePoint into localStorage on page load
-  // This is the ONLY time we read from SharePoint
-  async syncFromSharePoint(keys){
-    var synced = 0;
-    for(var i=0; i<keys.length; i++){
-      try{
-        var r = await fetch(SP_GET_URL, {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({key:keys[i]})
-        });
-        if(r.ok){
-          var d = await r.json();
-          if(d && d.value !== null && d.value !== undefined && d.value !== ''){
-            localStorage.setItem(keys[i], d.value);
-            synced++;
-          }
+  // Pull ALL rows from SharePoint in one call and sync to localStorage
+  async syncFromSharePoint(){
+    try{
+      var r = await fetch(SP_GET_URL, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({key:'__all__'})
+      });
+      if(!r.ok){ console.warn('[SP sync HTTP error]', r.status); return 0; }
+      var d = await r.json();
+      // Response is the full Get_items body: {value: [{Title, Value}, ...]}
+      var rows = d.value || [];
+      if(!Array.isArray(rows) || rows.length === 0){ return 0; }
+      var synced = 0;
+      rows.forEach(function(row){
+        var key = row.Title;
+        var val = row.Value;
+        if(key && val !== null && val !== undefined && val !== ''){
+          localStorage.setItem(key, val);
+          synced++;
         }
-      }catch(e){ console.warn('[SP sync failed for key]', keys[i], e); }
+      });
+      store._spOk = true;
+      console.log('[SP sync] synced', synced, 'keys from SharePoint');
+      return synced;
+    }catch(e){
+      console.warn('[SP sync failed]', e);
+      return 0;
     }
-    store._spOk = true;
-    return synced;
   }
 };
 function setSync(s,l){
