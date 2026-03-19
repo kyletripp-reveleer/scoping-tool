@@ -459,7 +459,6 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
     <div class="ver-actions">
       <button class="btn btn-gh btn-sm" onclick="openVerModal()">⊕ New Customer</button>
       <button class="btn btn-gh btn-sm" onclick="auth(()=>openManageModal())">⚙ Manage</button>
-    <button class="btn btn-gh btn-sm" id="hiddenBtn" style="display:none" onclick="auth(()=>openHiddenModal())">👁 Hidden Items</button>
       <button class="btn btn-pri btn-sm" onclick="exportVersion()">↓ Export Copy</button>
     </div>
   </div>
@@ -628,8 +627,9 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 // ══════════════════════════════════════════════════
 const PW = '522522';
 const SK = 'ci-v5';
-const VER_INDEX_KEY  = 'ci-ver-index';      // [{id,name,created}]
-const GLOBAL_STRUCT_KEY = 'ci-global-struct'; // global form structure
+const VER_INDEX_KEY  = 'ci-ver-index';       // [{id,name,created}]
+const HIDDEN_KEY     = 'ci-hidden-global';   // global hidden flags
+const STRUCTURE_KEY  = 'ci-structure-global';// global form structure
 
 // ══════════════════════════════════════════════════
 //  VERSION MANAGEMENT
@@ -666,17 +666,17 @@ async function switchVersion(id){
   // Reset to defaults before loading new version
   cards = defaultCards();
   SDEFS = [
-    {id:'s0',ico:'🏥',ttl:'Customer Profile',       sub:'Identify the customer type and buying organization'},
-    {id:'s1',ico:'⚙️',ttl:'Platform Configuration', sub:'Lines of business, members, risk & care gaps'},
-    {id:'s2',ico:'🔄',ttl:'Workflow Configuration',  sub:'POC integration and visit workflow enablement'},
-    {id:'s3',ico:'🔗',ttl:'POC Integration Phases',  sub:'EMR integrations by phase'},
-    {id:'s4',ico:'🗄️',ttl:'Data Sources',            sub:'Configure data types in scope and ingestion method'},
-    {id:'s5',ico:'📝',ttl:'Coding Services',         sub:'Volume, delivery model, and notes'},
-    {id:'s6',ico:'⚙️',ttl:'Core Platform Configuration', sub:'User roles, workflows, risk models, rules, and platform settings'},
-    {id:'s7',ico:'✅',ttl:'Scope Summary',           sub:'Review your configuration before exporting'},
+    {id:'s0', ico:'🏥', ttl:'Customer Profile',             sub:'Identify the customer type and buying organization'},
+    {id:'s1', ico:'⚙️', ttl:'LOB',                          sub:'Lines of business, members, and risk configuration'},
+    {id:'s2', ico:'🔄', ttl:'Workflow Configuration',        sub:'POC integration and visit workflow enablement'},
+    {id:'s4', ico:'🗄️', ttl:'Data Sources',                 sub:'Configure data types in scope and ingestion method'},
+    {id:'s5', ico:'📝', ttl:'Coding Services',               sub:'Volume, delivery model, and notes'},
+    {id:'sx-1772828549959', ico:'🧪', ttl:'Miscellaneous',   sub:'Additional customer details'},
+    {id:'sx-1772836816552', ico:'🧩', ttl:'Core Config (Imp Only)', sub:'User roles, workflows, risk models, rules'},
+    {id:'s6', ico:'✅', ttl:'Scope Summary',                 sub:'Review your configuration before exporting'},
   ];
   SEC_CARDS.length = 0;
-  [['c0-org'],['c1-platform','c1-lob','c1-risk'],['c2-workflows','c2-poc','c3-native','c3-uni'],[],['c4-data'],['c5-coding','c5-notes'],['c1-core'],[]].forEach(a=>SEC_CARDS.push(a));
+  [['c0-org'],['c1-lob','c1-risk'],['c2-workflows'],[],['c4-data'],['c5-coding'],['cx-1772828559357'],['c1-core'],[]].forEach(a=>SEC_CARDS.push(a));
   await loadData();
   buildVerSelect();
   buildSections();
@@ -685,7 +685,6 @@ async function switchVersion(id){
   updProg();
   Object.keys(cards).forEach(cid=>{ attachBranchListeners(cid); evalBranching(cid); });
   migrateValFromDom();
-  updateHiddenBtn();
   await loadPipeData();
   if (currentMode === 'pipeline') buildPipeline();
   toast(`Switched to: ${verIndex.find(v=>v.id===id)?.name||id}`,'📋');
@@ -709,7 +708,23 @@ async function createVersion(){
   // Save current state first
   await saveData();
 
-  // New customer starts blank — loadData will build from defaultCards + gstruct
+  // Always copy current form structure; strip answers so new customer starts blank
+  {
+    const snapshot = JSON.parse(JSON.stringify({cards, sdefs: SDEFS, secCards: SEC_CARDS}));
+    const allDefaults = Object.keys(defaultCards());
+    const deleted = allDefaults.filter(cid => !cards[cid]);
+    Object.keys(snapshot.cards).forEach(cid => {
+      (snapshot.cards[cid]?.fields || []).forEach(f => { delete f.val; });
+    });
+    try {
+      await store.set(verStorageKey(id), JSON.stringify({
+        cards: snapshot.cards,
+        deleted,
+        sdefs: snapshot.sdefs,
+        secCards: snapshot.secCards
+      }));
+    } catch(e){}
+  }
 
   verIndex.push({id, name, created: new Date().toISOString()});
   await saveVerIndex();
@@ -805,6 +820,13 @@ function exportVersion(){
     'let cards = defaultCards();   // { cid: { title, fields[] } }',
     'let cards = (function(){ var d=defaultCards(); if(window.__BAKED__){ Object.keys(window.__BAKED__.cards).forEach(function(k){ d[k]=window.__BAKED__.cards[k]; }); } return d; })();   // { cid: { title, fields[] } }'
   );
+
+  patched = patched.replace(
+    'let pipePhases = JSON.parse(JSON.stringify(PIPE_PHASES_DEFAULT));',
+    'let pipePhases = window.__BAKED__ ? JSON.parse(JSON.stringify(window.__BAKED__.pipe)) : JSON.parse(JSON.stringify(PIPE_PHASES_DEFAULT));'
+  );
+
+  var safeTitle = curName.replace(/</g,'&lt;').replace(/>/g,'&gt;');
   patched = patched.replace(/<title>[^<]*<\/title>/, '<title>Customer Scoping \u2014 ' + safeTitle + '<\/title>');
 
   var blob = new Blob([patched], {type:'text/html'});
@@ -851,32 +873,63 @@ let SDEFS = [
 function defaultCards(){
   return {
     'c0-org': {title:'Organization Details', fields:[
-      {id:'c0org-f1',lbl:'Organization Name',type:'text',ph:'e.g. Mass General Brigham',hint:'',opts:[],builtin:true},
-      {id:'c0org-f2',lbl:'Primary Contact',type:'text',ph:'Full name',hint:'',opts:[],builtin:true},
-      {id:'c0org-f3',lbl:'Email',type:'email',ph:'contact@org.com',hint:'',opts:[],builtin:true},
-      {id:'c0org-f4',lbl:'Phone',type:'phone',ph:'+1 (555) 000-0000',hint:'',opts:[],builtin:true},
-      {id:'c0org-f5',lbl:'Buying Organization',type:'dropdown',ph:'',hint:'',opts:['Health Plan','Provider Group','ACO','Parent Entity','Other'],builtin:true},
-      {id:'c0org-f6',lbl:'Target Go-Live Date',type:'date',ph:'',hint:'',opts:[],builtin:true},
-    ]},
-    'c1-platform': {title:'Platform Type', fields:[
-      {id:'c1plat-f1',lbl:'Deployment Platform',type:'dropdown',ph:'',hint:'',opts:['Combined (MA + ACA + MCD)','MA Only','ACA Only','MCD Only','Custom'],builtin:true},
-      {id:'c1plat-f2',lbl:'Standard Input Specs',type:'yesno',ph:'',hint:'',opts:[],builtin:true},
+      {id:'c0type-f1',      lbl:'Customer Type',                                                          type:'chips',    ph:'', hint:'', opts:['Health Plan','ACO','Provider','Payvider'],builtin:true},
+      {id:'c0org-f1',       lbl:'Organization Name',                                                      type:'text',     ph:'e.g. Mass General Brigham', hint:'', opts:[],builtin:true},
+      {id:'f1772828703742', lbl:'Payer/Enabler Name (If applicable - BCBC, Pearl, ETC)',                  type:'text',     ph:'', hint:'', opts:[],builtin:true},
+      {id:'c0org-f2',       lbl:'Primary Contact',                                                        type:'text',     ph:'Full name', hint:'', opts:[],builtin:true},
+      {id:'c0org-f3',       lbl:'Email',                                                                  type:'email',    ph:'contact@org.com', hint:'', opts:[],builtin:true},
+      {id:'c0org-f4',       lbl:'Phone',                                                                  type:'phone',    ph:'+1 (555) 000-0000', hint:'', opts:[],builtin:true},
+      {id:'c0org-f6',       lbl:'Target Go-Live Date',                                                    type:'date',     ph:'', hint:'', opts:[],builtin:true},
     ]},
     'c1-lob': {title:'Lines of Business & Members', fields:[
-      {id:'c1lob-f1',lbl:'Active Lines of Business',type:'chips',ph:'',hint:'Select all that apply',opts:['Medicare Advantage (MA)','ACA / Commercial','Medicaid (MCD)','DSNP','MAPD'],builtin:true},
-      {id:'c1lob-f2',lbl:'MA Members',type:'number',ph:'0',hint:'',opts:[],builtin:true},
-      {id:'c1lob-f3',lbl:'ACA Members',type:'number',ph:'0',hint:'',opts:[],builtin:true},
-      {id:'c1lob-f4',lbl:'MCD Members',type:'number',ph:'0',hint:'',opts:[],builtin:true},
+      {id:'c1lob-f1',       lbl:'Active Lines of Business',                                               type:'chips',    ph:'', hint:'Select all that apply', opts:['Medicare Advantage (MA)','ACA / Commercial','Medicaid (MCD)'],builtin:true},
+      {id:'c1lob-f2',       lbl:'MA Members',                                                             type:'number',   ph:'0', hint:'', opts:[],builtin:true},
+      {id:'c1lob-f3',       lbl:'ACA/Commercial Members',                                                 type:'number',   ph:'0', hint:'', opts:[],builtin:true},
+      {id:'c1lob-f4',       lbl:'MCD Members',                                                            type:'number',   ph:'0', hint:'', opts:[],builtin:true},
+      {id:'f1772827081304', lbl:'Number of Providers',                                                    type:'number',   ph:'0', hint:'', opts:[],builtin:true},
     ]},
     'c1-risk': {title:'Risk & Care Gap Configuration', fields:[
-      {id:'c1risk-f1',lbl:'Source of Risk Gaps',type:'dropdown',ph:'',hint:'CI algorithms, third-party, or both',opts:['CI Algorithms','Third-Party','Both'],builtin:true},
-      {id:'c1risk-f2',lbl:'Source of Care Gaps',type:'dropdown',ph:'',hint:'',opts:['N/A','CI Algorithms','Third-Party','Both'],builtin:true},
-      {id:'c1risk-f3',lbl:'IHE Data Pull',type:'yesno',ph:'',hint:'',opts:[],builtin:true},
-      {id:'c1risk-f4',lbl:'IHE Pull Frequency',type:'dropdown',ph:'',hint:'Standard: 2× annually',opts:['2× Annually (Standard)','Appointment Trigger','Quarterly','Custom'],builtin:true},
+      {id:'c1risk-f1',      lbl:'Source of Risk Gaps',                                                    type:'chips',    ph:'', hint:'', opts:['CI Algorithms','Third-Party','Both'],builtin:true},
+      {id:'f1772827185344', lbl:'If both, please explain',                                                type:'text',     ph:'', hint:'', opts:[],builtin:true},
+      {id:'c1risk-f2',      lbl:'Source of Care Gaps',                                                    type:'chips',    ph:'', hint:'', opts:['N/A','CI Algorithms','Third-Party','Both'],builtin:true},
+      {id:'f1772827209952', lbl:'If both, please explain',                                                type:'text',     ph:'', hint:'', opts:[],builtin:true},
+    ]},
+    'c2-workflows': {title:'Workflow Configuration', fields:[
+      {id:'c2wf-f1',        lbl:'Will the customer use our Pre-Visit CDI workflow?',                      type:'yesno',    ph:'', hint:'', opts:[],builtin:true},
+      {id:'c2wf-f2',        lbl:'POC Point of Care Integration?',                                         type:'yesno',    ph:'', hint:'', opts:[],builtin:true},
+      {id:'c3nat-f1',       lbl:'EMR Vendor',                                                             type:'chips',    ph:'', hint:'', opts:['Epic','athenaNet','Cerner','Other'],builtin:true},
+      {id:'f1772827647707', lbl:'Epic OPA or Sidebar?',                                                   type:'chips',    ph:'', hint:'', opts:['OPA/BPA','Sidebar'],builtin:true},
+      {id:'f1772828009028', lbl:'Is the customer on the new Risk Adjustment (RAD/RED) Framework?',        type:'yesno',    ph:'', hint:'', opts:[],builtin:true},
+      {id:'c3nat-f2',       lbl:'Integration Type',                                                       type:'chips',    ph:'', hint:'', opts:['Native/Bidirectional','Unidirectional'],builtin:true},
+      {id:'f1772827529263', lbl:"If we don't push back to the EMR, can the customer give us provider actions somehow? how?", type:'text', ph:'', hint:'', opts:[],builtin:true},
+      {id:'c3nat-f3',       lbl:'How many Instances?',                                                    type:'number',   ph:'1', hint:'', opts:[],builtin:true},
+      {id:'c2wf-f3',        lbl:'Will the customer use our Post-Visit coder workflow?',                   type:'yesno',    ph:'', hint:'', opts:[],builtin:true},
+      {id:'f1772828955249', lbl:'Will we pull data from HIEs for this customer?',                         type:'yesno',    ph:'', hint:'', opts:[],builtin:true},
+      {id:'f1772829005411', lbl:'HIE Pull Frequency',                                                     type:'chips',    ph:'', hint:'', opts:['2x annually (standard)','Appointment Trigger (Value Only)'],builtin:true},
+    ]},
+    'c4-data': {title:'Data Ingestion Configuration', fields:[
+      {id:'c4dat-f1',       lbl:'Patient Data',                                                           type:'chips',    ph:'', hint:'', opts:['API','Flat File'],builtin:true},
+      {id:'c4dat-f2',       lbl:'Coverage Data',                                                          type:'chips',    ph:'', hint:'', opts:['API','Flat File'],builtin:true},
+      {id:'c4dat-f3',       lbl:'Practitioner Data',                                                      type:'chips',    ph:'', hint:'', opts:['API','Flat File'],builtin:true},
+      {id:'c4dat-f4',       lbl:'Claims Data',                                                            type:'chips',    ph:'', hint:'', opts:['API','Flat File'],builtin:true},
+      {id:'c4dat-f5',       lbl:'Appointment Data',                                                       type:'chips',    ph:'', hint:'', opts:['API','Flat File'],builtin:true},
+      {id:'c4dat-f6',       lbl:'Third-Party Risk Data (External Conditions)',                             type:'chips',    ph:'', hint:'', opts:['API','Flat File','N/A'],builtin:true},
+    ]},
+    'c5-coding': {title:'Coding Volume & Delivery', fields:[
+      {id:'f1772828112218', lbl:'Is the customer interested in coding services?',                         type:'yesno',    ph:'', hint:'', opts:[],builtin:true},
+      {id:'c5cod-f1',       lbl:'Pre-Visit Annual Volume',                                                type:'number',   ph:'175,000', hint:'', opts:[],builtin:true},
+      {id:'c5cod-f2',       lbl:'Pre-Visit Delivery Model',                                               type:'dropdown', ph:'', hint:'', opts:['Onshore','Offshore','Price Both'],builtin:true},
+      {id:'c5cod-f3',       lbl:'Post-Visit Annual Volume',                                               type:'number',   ph:'350,000', hint:'', opts:[],builtin:true},
+      {id:'c5cod-f4',       lbl:'Post-Visit Delivery Model',                                              type:'dropdown', ph:'', hint:'', opts:['Onshore','Offshore','Price Both'],builtin:true},
+    ]},
+    'cx-1772828559357': {title:'Miscellaneous', fields:[
+      {id:'f1772828638962', lbl:'Does the customer need SAML SSO (single sign-on) for CDI Nurses?',      type:'yesno',    ph:'', hint:'', opts:[],builtin:true},
+      {id:'f1772828653034', lbl:'Does the customer need standard quality measures displayed?',            type:'yesno',    ph:'', hint:'', opts:[],builtin:true},
+      {id:'f1772828674714', lbl:'What else should we know about this customer?',                          type:'textarea', ph:'', hint:'', opts:[],builtin:true},
     ]},
     'c1-core': {title:'Core Platform Configuration', fields:[
-      {id:'c1core-f01',lbl:'CDI',                                      type:'yesno',ph:'',hint:'User Roles • Default: Yes',opts:[],builtin:true},
-      {id:'c1core-f02',lbl:'CDI Restricted',                           type:'yesno',ph:'',hint:'User Roles',opts:[],builtin:true},
+      {id:'c1core-f01',lbl:'CDI',                                     type:'yesno',ph:'',hint:'User Roles • Default: Yes',opts:[],builtin:true},
+      {id:'c1core-f02',lbl:'CDI Restricted',                          type:'yesno',ph:'',hint:'User Roles',opts:[],builtin:true},
       {id:'c1core-f03',lbl:'Provider',                                 type:'yesno',ph:'',hint:'User Roles • Default: Yes',opts:[],builtin:true},
       {id:'c1core-f04',lbl:'Coder',                                    type:'yesno',ph:'',hint:'User Roles • Default: Yes',opts:[],builtin:true},
       {id:'c1core-f05',lbl:'Appointment Based',                        type:'yesno',ph:'',hint:'Appointment & Encounter Workflow',opts:[],builtin:true},
@@ -884,11 +937,11 @@ function defaultCards(){
       {id:'c1core-f07',lbl:'Auto-Routing Configuration',               type:'yesno',ph:'',hint:'Appointment & Encounter Workflow',opts:[],builtin:true},
       {id:'c1core-f08',lbl:'100% Encounters to CDI',                   type:'yesno',ph:'',hint:'Appointment & Encounter Workflow',opts:[],builtin:true},
       {id:'c1core-f09',lbl:'CDI Lite',                                 type:'yesno',ph:'',hint:'Appointment & Encounter Workflow',opts:[],builtin:true},
-      {id:'c1core-f10',lbl:'Provider-Only',                            type:'yesno',ph:'',hint:'Appointment & Encounter Workflow • typically used with tech-only rule filter',opts:[],builtin:true},
+      {id:'c1core-f10',lbl:'Provider-Only',                            type:'yesno',ph:'',hint:'Appointment & Encounter Workflow',opts:[],builtin:true},
       {id:'c1core-f11',lbl:'Accept',                                   type:'yesno',ph:'',hint:'Provider Tags',opts:[],builtin:true},
       {id:'c1core-f12',lbl:'Dismiss',                                  type:'yesno',ph:'',hint:'Provider Tags',opts:[],builtin:true},
       {id:'c1core-f13',lbl:'Not Evaluated',                            type:'yesno',ph:'',hint:'Provider Tags',opts:[],builtin:true},
-      {id:'c1core-f14',lbl:'CMS-V28',                                  type:'yesno',ph:'',hint:'Risk Models • specify if RxHCCs should be added',opts:[],builtin:true},
+      {id:'c1core-f14',lbl:'CMS-V28',                                  type:'yesno',ph:'',hint:'Risk Models',opts:[],builtin:true},
       {id:'c1core-f15',lbl:'HHS-V07',                                  type:'yesno',ph:'',hint:'Risk Models',opts:[],builtin:true},
       {id:'c1core-f16',lbl:'MCD',                                      type:'yesno',ph:'',hint:'Risk Models',opts:[],builtin:true},
       {id:'c1core-f17',lbl:'Claims',                                   type:'yesno',ph:'',hint:'Rules',opts:[],builtin:true},
@@ -910,55 +963,10 @@ function defaultCards(){
       {id:'c1core-f33',lbl:'Specialty: Ophthalmology',                 type:'yesno',ph:'',hint:'Rule Filters',opts:[],builtin:true},
       {id:'c1core-f34',lbl:'Specialty: Pulmonology',                   type:'yesno',ph:'',hint:'Rule Filters',opts:[],builtin:true},
       {id:'c1core-f35',lbl:'Specialty: Wound Care',                    type:'yesno',ph:'',hint:'Rule Filters',opts:[],builtin:true},
-      {id:'c1core-f36',lbl:'MFA for App Users (Email)',                type:'yesno',ph:'',hint:'MISC • Default: Yes',opts:[],builtin:true},
-      {id:'c1core-f37',lbl:'MFA for App Users (QR Code)',              type:'yesno',ph:'',hint:'MISC',opts:[],builtin:true},
-      {id:'c1core-f38',lbl:'SSO',                                      type:'yesno',ph:'',hint:'MISC',opts:[],builtin:true},
-      {id:'c1core-f39',lbl:'Risk Adjustment Claim Eligibility',        type:'yesno',ph:'',hint:'MISC',opts:[],builtin:true},
-    ]},
-    'c2-poc': {title:'POC Integration', fields:[
-      {id:'c2poc-f1',lbl:'POC Integration Enabled',type:'yesno',ph:'',hint:'"No" = Portal/Paper only',opts:[],builtin:true},
-      {id:'c2poc-f2',lbl:'Exceptions / Customizations',type:'yesno',ph:'',hint:'',opts:[],builtin:true},
-      {id:'c2poc-f3',lbl:'Customization Notes',type:'textarea',ph:'Describe exceptions or custom builds…',hint:'',opts:[],builtin:true},
-    ]},
-    'c2-workflows': {title:'Visit Workflows', fields:[
-      {id:'c2wf-f1',lbl:'Pre-Visit',type:'yesno',ph:'',hint:'',opts:[],builtin:true},
-      {id:'c2wf-f2',lbl:'During-Visit',type:'yesno',ph:'',hint:'',opts:[],builtin:true},
-      {id:'c2wf-f3',lbl:'Post-Visit',type:'yesno',ph:'',hint:'',opts:[],builtin:true},
-    ]},
-    'c3-native': {title:'Native EMR Integrations', fields:[
-      {id:'c3nat-f1',lbl:'EMR Phase 1',type:'dropdown',ph:'',hint:'Primary integration phase',opts:['Epic','Cerner','Athena','Allscripts','Other'],builtin:true},
-      {id:'c3nat-f2',lbl:'Integration Type',type:'dropdown',ph:'',hint:'',opts:['Native/Bidirectional','Bidirectional','Unidirectional'],builtin:true},
-      {id:'c3nat-f3',lbl:'Instances',type:'number',ph:'1',hint:'Number of EMR instances',opts:[],builtin:true},
-      {id:'c3nat-f4',lbl:'Target Providers',type:'number',ph:'0',hint:'',opts:[],builtin:true},
-      {id:'c3nat-f5',lbl:'Attributed Lives',type:'number',ph:'150,000',hint:'',opts:[],builtin:true},
-      {id:'c3nat-f6',lbl:'Integration Notes',type:'textarea',ph:'Phase details, special requirements…',hint:'',opts:[],builtin:true},
-    ]},
-    'c3-uni': {title:'Unidirectional Pull Only', fields:[
-      {id:'c3uni-f1',lbl:'EMR System',type:'text',ph:'Specify EMR name',hint:'',opts:[],builtin:true},
-      {id:'c3uni-f2',lbl:'Data Format',type:'dropdown',ph:'',hint:'',opts:['CCD','FHIR','HL7','CSV'],builtin:true},
-      {id:'c3uni-f3',lbl:'Interop Provider',type:'text',ph:'e.g. REDOX',hint:'',opts:[],builtin:true},
-      {id:'c3uni-f4',lbl:'Instances',type:'number',ph:'1',hint:'',opts:[],builtin:true},
-      {id:'c3uni-f5',lbl:'Attributed Lives',type:'number',ph:'0',hint:'',opts:[],builtin:true},
-    ]},
-    'c4-data': {title:'Data Ingestion Configuration', fields:[
-      {id:'c4dat-f1',lbl:'Patient Data',type:'dropdown',ph:'',hint:'',opts:['Flat File','API','FHIR','HL7'],builtin:true},
-      {id:'c4dat-f2',lbl:'Coverage Data',type:'dropdown',ph:'',hint:'',opts:['API','Flat File','FHIR','HL7'],builtin:true},
-      {id:'c4dat-f3',lbl:'Practitioner Data',type:'dropdown',ph:'',hint:'',opts:['API','Flat File','FHIR','HL7'],builtin:true},
-      {id:'c4dat-f4',lbl:'Claims Data',type:'dropdown',ph:'',hint:'',opts:['API','Flat File','FHIR','HL7'],builtin:true},
-      {id:'c4dat-f5',lbl:'Appointment Data',type:'dropdown',ph:'',hint:'',opts:['API','Flat File','FHIR','HL7'],builtin:true},
-      {id:'c4dat-f6',lbl:'Third-Party Risk Data',type:'dropdown',ph:'',hint:'',opts:['API','Flat File','FHIR','HL7'],builtin:true},
-      {id:'c4dat-f7',lbl:'Third-Party Quality Data',type:'dropdown',ph:'',hint:'',opts:['API','Flat File','FHIR','HL7'],builtin:true},
-    ]},
-    'c5-coding': {title:'Coding Volume & Delivery', fields:[
-      {id:'c5cod-f1',lbl:'Pre-Visit Annual Volume',type:'number',ph:'175,000',hint:'Expected encounters per year',opts:[],builtin:true},
-      {id:'c5cod-f2',lbl:'Pre-Visit Delivery Model',type:'dropdown',ph:'',hint:'',opts:['Onshore','Offshore','Price Both'],builtin:true},
-      {id:'c5cod-f3',lbl:'Post-Visit Annual Volume',type:'number',ph:'350,000',hint:'',opts:[],builtin:true},
-      {id:'c5cod-f4',lbl:'Post-Visit Delivery Model',type:'dropdown',ph:'',hint:'',opts:['Onshore','Offshore','Price Both'],builtin:true},
-    ]},
-    'c5-notes': {title:'Additional Notes & Flags', fields:[
-      {id:'c5not-f1',lbl:'Open Items',type:'textarea',ph:'e.g. DXCG MCD Mapping, confirm Epic instance count…',hint:'',opts:[],builtin:true},
-      {id:'c5not-f2',lbl:'Internal Owner',type:'text',ph:'Assigned team member',hint:'',opts:[],builtin:true},
-      {id:'c5not-f3',lbl:'Next Action',type:'text',ph:'e.g. Send SOW, schedule discovery call',hint:'',opts:[],builtin:true},
+      {id:'c1core-f36',lbl:'MFA for App Users (Email)',                 type:'yesno',ph:'',hint:'MISC • Default: Yes',opts:[],builtin:true},
+      {id:'c1core-f37',lbl:'MFA for App Users (QR Code)',               type:'yesno',ph:'',hint:'MISC',opts:[],builtin:true},
+      {id:'c1core-f38',lbl:'SSO',                                       type:'yesno',ph:'',hint:'MISC',opts:[],builtin:true},
+      {id:'c1core-f39',lbl:'Risk Adjustment Claim Eligibility',         type:'yesno',ph:'',hint:'MISC',opts:[],builtin:true},
     ]},
   };
 }
@@ -968,9 +976,9 @@ function defaultCards(){
 // ══════════════════════════════════════════════════
 let cards = defaultCards();   // { cid: { title, fields[] } }
 let gstruct = {
-  fieldDefs: {}, fieldOrder: {}, hiddenFields: {}, hiddenCards: {},
-  hiddenSections: {}, cardTitles: {}, newFields: {}, newCards: {},
-  sdefs: null, secCards: null
+  fieldDefs:{}, fieldOrder:{}, hiddenFields:{}, hiddenCards:{},
+  hiddenSections:{}, cardTitles:{}, newFields:{}, newCards:{},
+  sdefs:null, secCards:null
 };
 let curStep = 0;
 let authed = false;
@@ -1043,21 +1051,16 @@ function setSync(s,l){
 
 async function loadData(){
   try{
-    // Always start fresh from defaultCards
-    cards = defaultCards();
-    // Apply global structure overrides (edits, hidden flags, new fields, etc.)
+    cards=defaultCards();
     applyGStruct();
-    // Now load this customer's answers
-    const val=await store.get(verStorageKey(curVerId));
-    if(val){
-      const saved=JSON.parse(val);
-      // Pour saved answers onto fields by matching field ID
-      const vals = saved.vals || {};
-      // Legacy: extract vals from old cards format
-      if(!saved.vals && saved.cards){
+    var raw=await store.get(verStorageKey(curVerId));
+    if(raw){
+      var saved=JSON.parse(raw);
+      var vals=saved.vals||{};
+      if(!saved.vals&&saved.cards){
         Object.values(saved.cards).forEach(function(card){
           (card.fields||[]).forEach(function(f){
-            if(f.id && f.val!==undefined && f.val!==null && f.val!=='') vals[f.id]=f.val;
+            if(f.id&&f.val!==undefined&&f.val!==null&&f.val!=='') vals[f.id]=f.val;
           });
         });
       }
@@ -1067,25 +1070,24 @@ async function loadData(){
         });
       });
     }
-    setSync('ok', inClaude ? 'Synced' : 'Saved locally');
-  }catch(e){ console.error('[loadData]',e); setSync('ok','Ready'); }
+    setSync('ok',inClaude?'Synced':'Saved locally');
+  }catch(e){console.error('[loadData]',e);setSync('ok','Ready');}
 }
 
 async function saveData(){
   setSync('sy','Saving…');
   try{
-    // Save only field values keyed by field ID — structure is global
-    const vals={};
+    var vals={};
     Object.values(cards).forEach(function(card){
       (card.fields||[]).forEach(function(f){
-        if(f.val!==undefined && f.val!==null && f.val!=='' && !(Array.isArray(f.val)&&f.val.length===0))
+        if(f.val!==undefined&&f.val!==null&&f.val!==''&&!(Array.isArray(f.val)&&f.val.length===0))
           vals[f.id]=f.val;
       });
     });
-    await store.set(verStorageKey(curVerId), JSON.stringify({vals:vals}));
-    setSync('ok', inClaude ? 'Saved · shared' : 'Saved locally');
-    setTimeout(function(){ setSync('ok', inClaude ? 'Synced' : 'Saved locally'); },2200);
-  }catch(e){ setSync('er','Save failed'); toast('Could not save','⚠️'); }
+    await store.set(verStorageKey(curVerId),JSON.stringify({vals:vals}));
+    setSync('ok',inClaude?'Saved · shared':'Saved locally');
+    setTimeout(function(){setSync('ok',inClaude?'Synced':'Saved locally');},2200);
+  }catch(e){setSync('er','Save failed');toast('Could not save','⚠️');}
 }
 
 // ══════════════════════════════════════════════════
@@ -1161,136 +1163,114 @@ async function resetForm() {
 
 
 // ══════════════════════════════════════════════════
-//  GLOBAL STRUCTURE — persists form edits for ALL customers
+//  GLOBAL STRUCTURE + HIDDEN FLAGS
 // ══════════════════════════════════════════════════
 
-function saveGStruct(){
-  try{ localStorage.setItem(GLOBAL_STRUCT_KEY, JSON.stringify(gstruct)); }catch(e){}
-}
+function saveGStruct(){ try{ localStorage.setItem(STRUCTURE_KEY, JSON.stringify(gstruct)); }catch(e){} }
+function saveHidden(){  try{ localStorage.setItem(HIDDEN_KEY,    JSON.stringify({fields:gstruct.hiddenFields,cards:gstruct.hiddenCards,sections:gstruct.hiddenSections})); }catch(e){} }
 
 function loadGStruct(){
   try{
-    const raw = localStorage.getItem(GLOBAL_STRUCT_KEY);
-    if(raw){
-      const s = JSON.parse(raw);
-      gstruct.fieldDefs     = s.fieldDefs     || {};
-      gstruct.fieldOrder    = s.fieldOrder    || {};
-      gstruct.hiddenFields  = s.hiddenFields  || {};
-      gstruct.hiddenCards   = s.hiddenCards   || {};
-      gstruct.hiddenSections= s.hiddenSections|| {};
-      gstruct.cardTitles    = s.cardTitles    || {};
-      gstruct.newFields     = s.newFields     || {};
-      gstruct.newCards      = s.newCards      || {};
-      gstruct.sdefs         = s.sdefs         || null;
-      gstruct.secCards      = s.secCards      || null;
+    var rs = localStorage.getItem(STRUCTURE_KEY);
+    if(rs){ var s=JSON.parse(rs);
+      gstruct.fieldDefs=s.fieldDefs||{}; gstruct.fieldOrder=s.fieldOrder||{};
+      gstruct.hiddenFields=s.hiddenFields||{}; gstruct.hiddenCards=s.hiddenCards||{};
+      gstruct.hiddenSections=s.hiddenSections||{}; gstruct.cardTitles=s.cardTitles||{};
+      gstruct.newFields=s.newFields||{}; gstruct.newCards=s.newCards||{};
+      gstruct.sdefs=s.sdefs||null; gstruct.secCards=s.secCards||null;
+    }
+    // Also load old hidden key if exists
+    var rh = localStorage.getItem(HIDDEN_KEY);
+    if(rh){ var h=JSON.parse(rh);
+      if(h.fields)   gstruct.hiddenFields   = Object.assign(gstruct.hiddenFields,   h.fields);
+      if(h.cards)    gstruct.hiddenCards    = Object.assign(gstruct.hiddenCards,    h.cards);
+      if(h.sections) gstruct.hiddenSections = Object.assign(gstruct.hiddenSections, h.sections);
     }
   }catch(e){ console.error('[loadGStruct]',e); }
 }
 
-// Apply global structure on top of fresh defaultCards().
-// Called every time cards is reset (loadData, switchVersion).
 function applyGStruct(){
   try{
-    // 1. Override field definitions (label, type, opts, hint, etc.)
     Object.keys(gstruct.fieldDefs).forEach(function(fid){
-      var ov = gstruct.fieldDefs[fid];
+      var ov=gstruct.fieldDefs[fid];
       Object.values(cards).forEach(function(card){
-        var f = (card.fields||[]).find(function(x){ return x.id===fid; });
-        if(f) Object.assign(f, ov);
+        var f=(card.fields||[]).find(function(x){return x.id===fid;});
+        if(f) Object.assign(f,ov);
       });
     });
-
-    // 2. Apply card title overrides
     Object.keys(gstruct.cardTitles).forEach(function(cid){
-      if(cards[cid]) cards[cid].title = gstruct.cardTitles[cid];
+      if(cards[cid]) cards[cid].title=gstruct.cardTitles[cid];
     });
-
-    // 3. Merge user-added fields into their cards
     Object.keys(gstruct.newFields).forEach(function(cid){
       if(!cards[cid]) return;
-      var existing = new Set((cards[cid].fields||[]).map(function(f){ return f.id; }));
+      var ex=new Set((cards[cid].fields||[]).map(function(f){return f.id;}));
       (gstruct.newFields[cid]||[]).forEach(function(f){
-        if(!existing.has(f.id)) cards[cid].fields.push(JSON.parse(JSON.stringify(f)));
+        if(!ex.has(f.id)) cards[cid].fields.push(JSON.parse(JSON.stringify(f)));
       });
     });
-
-    // 4. Apply field order
     Object.keys(gstruct.fieldOrder).forEach(function(cid){
       if(!cards[cid]) return;
-      var order = gstruct.fieldOrder[cid];
-      var map = {};
-      (cards[cid].fields||[]).forEach(function(f){ map[f.id]=f; });
-      var ordered = [];
-      order.forEach(function(fid){ if(map[fid]) ordered.push(map[fid]); });
-      // Append any new fields not yet in the order
-      (cards[cid].fields||[]).forEach(function(f){ if(!order.includes(f.id)) ordered.push(f); });
-      cards[cid].fields = ordered;
+      var order=gstruct.fieldOrder[cid], map={};
+      (cards[cid].fields||[]).forEach(function(f){map[f.id]=f;});
+      var ordered=[];
+      order.forEach(function(fid){if(map[fid])ordered.push(map[fid]);});
+      (cards[cid].fields||[]).forEach(function(f){if(!order.includes(f.id))ordered.push(f);});
+      cards[cid].fields=ordered;
     });
-
-    // 5. Add user-created cards
     Object.keys(gstruct.newCards).forEach(function(cid){
       if(!cards[cid]){
-        var nc = gstruct.newCards[cid];
-        cards[cid] = {title: nc.title, fields: (nc.fields||[]).map(function(f){ return JSON.parse(JSON.stringify(f)); })};
-        var si = nc.secIdx;
-        if(si!==undefined && SEC_CARDS[si] && !SEC_CARDS[si].includes(cid)){
-          SEC_CARDS[si].push(cid);
-        }
+        var nc=gstruct.newCards[cid];
+        cards[cid]={title:nc.title,fields:(nc.fields||[]).map(function(f){return JSON.parse(JSON.stringify(f));})};
+        var si=nc.secIdx;
+        if(si!==undefined&&SEC_CARDS[si]&&!SEC_CARDS[si].includes(cid)) SEC_CARDS[si].push(cid);
       }
     });
-
-    // 6. Apply phase/section overrides
-    if(gstruct.sdefs && gstruct.sdefs.length){
-      SDEFS.length=0; gstruct.sdefs.forEach(function(s){ SDEFS.push(Object.assign({},s)); });
+    if(gstruct.sdefs&&gstruct.sdefs.length){
+      SDEFS.length=0; gstruct.sdefs.forEach(function(s){SDEFS.push(Object.assign({},s));});
     }
-    if(gstruct.secCards && gstruct.secCards.length){
-      SEC_CARDS.length=0; gstruct.secCards.forEach(function(a){ SEC_CARDS.push(a.slice()); });
+    if(gstruct.secCards&&gstruct.secCards.length){
+      SEC_CARDS.length=0; gstruct.secCards.forEach(function(a){SEC_CARDS.push(a.slice());});
     }
-  }catch(e){ console.error('[applyGStruct]',e); }
+  }catch(e){console.error('[applyGStruct]',e);}
 }
 
-// Hidden items UI
 function updateHiddenBtn(){
-  var any = Object.keys(gstruct.hiddenFields).length ||
-            Object.keys(gstruct.hiddenCards).length  ||
-            Object.keys(gstruct.hiddenSections).length;
-  var btn = document.getElementById('hiddenBtn');
-  if(btn) btn.style.display = any ? '' : 'none';
+  var any=Object.keys(gstruct.hiddenFields).length||Object.keys(gstruct.hiddenCards).length||Object.keys(gstruct.hiddenSections).length;
+  var btn=document.getElementById('hiddenBtn'); if(btn) btn.style.display=any?'':'none';
 }
 function openHiddenModal(){ renderHiddenModal(); document.getElementById('hiddenOv').classList.add('on'); }
 function closeHiddenModal(){ document.getElementById('hiddenOv').classList.remove('on'); }
 function renderHiddenModal(){
-  var defs = defaultCards(); var html = '';
-  var hs = SDEFS.filter(function(s){ return gstruct.hiddenSections[s.id]; });
+  var defs=defaultCards(); var html='';
+  var hs=SDEFS.filter(function(s){return gstruct.hiddenSections[s.id];});
   if(hs.length){
-    html += '<div class="ml">Hidden Phases</div>';
+    html+='<div class="ml">Hidden Phases</div>';
     hs.forEach(function(s){
-      html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--s2);border:1px solid var(--bd);border-radius:7px;margin-bottom:8px">' +
-              '<span>' + esc(s.ico) + ' <strong>' + esc(s.ttl) + '</strong></span>' +
-              '<button class="btn btn-gh btn-sm" onclick="restoreSection(\'' + s.id + '\')">↩ Restore</button></div>';
+      html+='<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--s2);border:1px solid var(--bd);border-radius:7px;margin-bottom:8px">'
+           +'<span>'+esc(s.ico)+' <strong>'+esc(s.ttl)+'</strong></span>'
+           +'<button class="btn btn-gh btn-sm" onclick="restoreSection(&quot;'+s.id+'&quot;)">↩ Restore</button></div>';
     });
   }
-  var hc = Object.keys(gstruct.hiddenCards);
+  var hc=Object.keys(gstruct.hiddenCards);
   if(hc.length){
-    html += '<div class="ml" style="margin-top:14px">Hidden Cards</div>';
+    html+='<div class="ml" style="margin-top:14px">Hidden Cards</div>';
     hc.forEach(function(cid){
-      var t = (defs[cid]||cards[cid]||{}).title||cid;
-      html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--s2);border:1px solid var(--bd);border-radius:7px;margin-bottom:8px">' +
-              '<strong>' + esc(t) + '</strong>' +
-              '<button class="btn btn-gh btn-sm" onclick="restoreCard(\'' + cid + '\')">↩ Restore</button></div>';
+      var t=(defs[cid]||cards[cid]||{}).title||cid;
+      html+='<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--s2);border:1px solid var(--bd);border-radius:7px;margin-bottom:8px">'
+           +'<strong>'+esc(t)+'</strong>'
+           +'<button class="btn btn-gh btn-sm" onclick="restoreCard(&quot;'+cid+'&quot;)">↩ Restore</button></div>';
     });
   }
-  var hf = Object.keys(gstruct.hiddenFields);
+  var hf=Object.keys(gstruct.hiddenFields);
   if(hf.length){
-    html += '<div class="ml" style="margin-top:14px">Hidden Fields</div>';
+    html+='<div class="ml" style="margin-top:14px">Hidden Fields</div>';
     hf.forEach(function(fid){
-      var lbl = fid;
-      Object.values(defs).forEach(function(c){ (c.fields||[]).forEach(function(f){ if(f.id===fid) lbl=f.lbl; }); });
-      // Also check gstruct.fieldDefs for overridden label
-      if(gstruct.fieldDefs[fid] && gstruct.fieldDefs[fid].lbl) lbl = gstruct.fieldDefs[fid].lbl;
-      html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--s2);border:1px solid var(--bd);border-radius:7px;margin-bottom:8px">' +
-              esc(lbl) +
-              '<button class="btn btn-gh btn-sm" onclick="restoreField(\'' + fid + '\')">↩ Restore</button></div>';
+      var lbl=fid;
+      Object.values(defs).forEach(function(c){(c.fields||[]).forEach(function(f){if(f.id===fid)lbl=f.lbl;});});
+      if(gstruct.fieldDefs[fid]&&gstruct.fieldDefs[fid].lbl) lbl=gstruct.fieldDefs[fid].lbl;
+      html+='<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--s2);border:1px solid var(--bd);border-radius:7px;margin-bottom:8px">'
+           +esc(lbl)
+           +'<button class="btn btn-gh btn-sm" onclick="restoreField(&quot;'+fid+'&quot;)">↩ Restore</button></div>';
     });
   }
   if(!html) html='<p style="color:var(--mu);font-size:12px;text-align:center;padding:20px 0">No hidden items.</p>';
@@ -1299,9 +1279,8 @@ function renderHiddenModal(){
 function restoreSection(sid){ delete gstruct.hiddenSections[sid]; saveGStruct(); updateHiddenBtn(); rebuildAll(); renderHiddenModal(); toast('Phase restored','↩'); }
 function restoreCard(cid){ delete gstruct.hiddenCards[cid]; saveGStruct(); updateHiddenBtn(); rebuildAll(); renderHiddenModal(); toast('Card restored','↩'); }
 function restoreField(fid){
-  delete gstruct.hiddenFields[fid];
-  saveGStruct(); updateHiddenBtn();
-  Object.keys(cards).forEach(function(cid){ if((cards[cid]?.fields||[]).some(function(f){ return f.id===fid; })) refreshCard(cid); });
+  delete gstruct.hiddenFields[fid]; saveGStruct(); updateHiddenBtn();
+  Object.keys(cards).forEach(function(cid){if((cards[cid]&&cards[cid].fields||[]).some(function(f){return f.id===fid;}))refreshCard(cid);});
   renderHiddenModal(); toast('Field restored','↩');
 }
 
@@ -1318,7 +1297,6 @@ async function init(){
     evalBranching(cid);
   });
   migrateValFromDom();
-  updateHiddenBtn();
   await loadPipeGlobal();
   await loadPipeData();
   hookPipelineLiveUpdates();
@@ -1337,7 +1315,6 @@ function goTo(n){ document.getElementById('nb'+curStep)?.classList.remove('on');
 function buildSections(){
   const summaryIdx = SDEFS.length - 1;
   document.getElementById('wrap').innerHTML=SDEFS.map((s,i)=>{
-    if(i!==summaryIdx && gstruct.hiddenSections[s.id]) return '';
     const isSummary = i === summaryIdx;
     const editBtns = !isSummary ? `
       <div class="sec-h-acts">
@@ -1357,7 +1334,7 @@ function buildSections(){
             <button class="btn-add-card" onclick="auth(()=>promptAddCard(${i}))">＋ Add Card</button>
           </div>`;
       } else {
-        cardHtml = cids.filter(function(cid){return !gstruct.hiddenCards[cid];}).map(cid=>renderCard(cid)).join('');
+        cardHtml = cids.map(cid=>renderCard(cid)).join('');
         cardHtml += `<div class="add-card-row"><button class="btn-add-card" onclick="auth(()=>promptAddCard(${i}))">＋ Add Another Card</button></div>`;
       }
     } else {
@@ -1436,19 +1413,21 @@ function saveSecModal(){
     toast('Phase updated','✓');
   }
 
-  gstruct.sdefs=SDEFS.map(function(s){return Object.assign({},s);});
-  gstruct.secCards=SEC_CARDS.map(function(a){return a.slice();});
-  saveGStruct();
-  closeSecModal(); rebuildAll();
+  closeSecModal();
+  rebuildAll();
+  saveData();
 }
 
 function deleteSection(idx){
-  if(SDEFS.length<=2){ toast('Cannot hide the only phase','⚠️'); return; }
-  var s=SDEFS[idx];
-  if(!confirm('Hide "'+s.ttl+'" for all customers? Restore via Hidden Items.')) return;
-  gstruct.hiddenSections[s.id]=true;
-  if(curStep>=SDEFS.length-1) curStep=0;
-  saveGStruct(); updateHiddenBtn(); rebuildAll(); toast('Phase hidden for all customers','👁️');
+  if(SDEFS.length <= 2){ toast('Cannot delete the only phase','⚠️'); return; }
+  const s = SDEFS[idx];
+  if(!confirm(`Delete the "${s.ttl}" phase? Its cards and fields will be removed.`)) return;
+  SDEFS.splice(idx, 1);
+  SEC_CARDS.splice(idx, 1);
+  if(curStep >= SDEFS.length - 1) curStep = SDEFS.length - 2;
+  rebuildAll();
+  saveData();
+  toast('Phase deleted','🗑');
 }
 
 function rebuildAll(){
@@ -1476,11 +1455,11 @@ function promptAddCard(secIdx){
   // Add to this section's card list
   if(!SEC_CARDS[secIdx]) SEC_CARDS[secIdx] = [];
   SEC_CARDS[secIdx].push(cid);
-  gstruct.newCards[cid]={title:title,fields:[],secIdx:secIdx};
-  gstruct.secCards=SEC_CARDS.map(function(a){return a.slice();});
-  saveGStruct();
-  rebuildAll(); goTo(secIdx);
-  toast('Card "'+title+'" added for all customers!','✓');
+  rebuildAll();
+  // Navigate to the section that got the card
+  goTo(secIdx);
+  saveData();
+  toast(`Card "${title}" added`, '✓');
 }
 
 function renderCard(cid){
@@ -1510,22 +1489,25 @@ function renameCard(cid){
   const t=newTitle.trim();
   if(!t){toast('Name cannot be empty','⚠️');return;}
   c.title=t;
-  var el=document.getElementById('ctitle-'+cid);
+  const el=document.getElementById('ctitle-'+cid);
   if(el) el.textContent=t;
-  gstruct.cardTitles[cid]=t;
-  if(gstruct.newCards[cid]) gstruct.newCards[cid].title=t;
-  saveGStruct(); toast('Card renamed for all customers!','✓');
+  saveData(); toast('Section renamed','✓');
 }
 
 function deleteCard(cid){
-  var c=cards[cid]; if(!c) return;
-  if(!confirm('Hide "'+c.title+'" for all customers? Restore via Hidden Items.')) return;
-  gstruct.hiddenCards[cid]=true;
-  saveGStruct(); updateHiddenBtn(); rebuildAll(); toast('Card hidden for all customers','👁️');
+  const c=cards[cid]; if(!c) return;
+  if(!confirm(`Delete the entire "${c.title}" section and all its fields? This cannot be undone.`)) return;
+  // Remove from cards
+  delete cards[cid];
+  // Remove from SEC_CARDS
+  SEC_CARDS.forEach(arr=>{const i=arr.indexOf(cid);if(i>-1)arr.splice(i,1);});
+  // Remove DOM element
+  document.getElementById('card-'+cid)?.remove();
+  saveData(); toast('Section deleted','🗑');
 }
 
 function renderFields(cid){
-  return (cards[cid]?.fields||[]).map((f,fi)=>gstruct.hiddenFields[f.id]?'':renderField(cid,fi,f)).join('');
+  return (cards[cid]?.fields||[]).map((f,fi)=>renderField(cid,fi,f)).join('');
 }
 
 function refreshCard(cid){
@@ -1614,10 +1596,7 @@ function dzDrop(e,cid){
   if(cid===dragCid&&dest>dragFi)dest--;
   cards[cid].fields.splice(dest,0,moved);
   refreshCard(dragCid);if(cid!==dragCid)refreshCard(cid);
-  [dragCid,cid].filter(function(v,i,a){return a.indexOf(v)===i;}).forEach(function(c){
-    gstruct.fieldOrder[c]=(cards[c]?.fields||[]).map(function(f){return f.id;});
-  });
-  saveGStruct(); toast('Reordered for all customers!','↕');
+  saveData();toast('Reordered!','↕');
 }
 
 // ══════════════════════════════════════════════════
@@ -1731,32 +1710,24 @@ function saveField(){
     condVal:     (condFieldId&&condVal) ? condVal     : null,
   };
   if(!cards[mCid].fields) cards[mCid].fields=[];
-  if(mFi!==null){
-    cards[mCid].fields[mFi]=f;
-    // Save field definition globally
-    gstruct.fieldDefs[f.id]={lbl:f.lbl,type:f.type,hint:f.hint,ph:f.ph,opts:f.opts.slice(),condFieldId:f.condFieldId,condVal:f.condVal};
-    // Update in newFields if it lives there
-    if(gstruct.newFields[mCid]){
-      var ni=gstruct.newFields[mCid].findIndex(function(x){return x.id===f.id;});
-      if(ni>=0) gstruct.newFields[mCid][ni]=JSON.parse(JSON.stringify(f));
-    }
-    toast('Field updated for all customers!','✓');
-  } else {
-    cards[mCid].fields.push(f);
-    if(!gstruct.newFields[mCid]) gstruct.newFields[mCid]=[];
-    gstruct.newFields[mCid].push(JSON.parse(JSON.stringify(f)));
-    toast('Field added for all customers!','✓');
-  }
-  saveGStruct();
-  refreshCard(mCid); evalBranching(mCid); closeFM();
+  if(mFi!==null){cards[mCid].fields[mFi]=f; toast('Field updated!','✓');}
+  else{cards[mCid].fields.push(f); toast('Field added!','✓');}
+  refreshCard(mCid);
+  evalBranching(mCid);
+  saveData(); closeFM();
 }
 
 function delField(cid,fi){
-  if(!confirm('Hide this field for all customers? You can restore it via Hidden Items.'))return;
-  var fid=cards[cid].fields[fi]?.id; if(!fid) return;
-  gstruct.hiddenFields[fid]=true;
-  cards[cid].fields.forEach(function(f){ if(f.condFieldId===fid){f.condFieldId=null;f.condVal=null;} });
-  saveGStruct(); updateHiddenBtn(); refreshCard(cid); toast('Field hidden for all customers','👁️');
+  if(!confirm('Delete this field?'))return;
+  const deletedId=cards[cid].fields[fi]?.id;
+  cards[cid].fields.splice(fi,1);
+  // Clean up any branches that pointed to the deleted field
+  if(deletedId){
+    cards[cid].fields.forEach(f=>{
+      if(f.condFieldId===deletedId){ f.condFieldId=null; f.condVal=null; }
+    });
+  }
+  refreshCard(cid); saveData(); toast('Field deleted','🗑');
 }
 
 // ══════════════════════════════════════════════════
@@ -3205,18 +3176,5 @@ function hookPipelineLiveUpdates() {
   </div>
 </div>
 
-
-<!-- HIDDEN ITEMS MODAL -->
-<div class="ov" id="hiddenOv">
-  <div class="ov-bg" onclick="closeHiddenModal()"></div>
-  <div class="ov-box" style="width:500px;max-width:95vw;max-height:85vh;overflow-y:auto">
-    <div class="fm-hdr">
-      <div><h3>Hidden Items</h3><p>Restore fields, cards, or phases you previously hid.</p></div>
-      <button class="fm-x" onclick="closeHiddenModal()">✕</button>
-    </div>
-    <div class="fm-body" id="hiddenModalBody"></div>
-    <div class="fm-ftr"><button class="btn btn-gh" onclick="closeHiddenModal()">Close</button></div>
-  </div>
-</div>
 </body>
 </html>
