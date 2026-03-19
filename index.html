@@ -689,7 +689,7 @@ async function switchVersion(id){
     {id:'s6',ico:'✅',ttl:'Scope Summary',                  sub:'Review your configuration before exporting'},
   ];
   SEC_CARDS.length = 0;
-  [['c0-org'],['c1-lob','c1-risk'],['c2-workflows'],[],['c4-data'],['c5-coding'],['cx-1772828559357'],['c1-core'],[]].forEach(a=>SEC_CARDS.push(a));
+  [['c0-org'],['c1-lob','c1-risk'],['c2-workflows'],['c4-data'],['c5-coding'],['cx-1772828559357'],['c1-core'],[]].forEach(a=>SEC_CARDS.push(a));
   await loadData();
   buildVerSelect();
   buildSections();
@@ -1002,7 +1002,6 @@ const SEC_CARDS = [
   ['c0-org'],
   ['c1-lob','c1-risk'],
   ['c2-workflows'],
-  [],
   ['c4-data'],
   ['c5-coding'],
   ['cx-1772828559357'],
@@ -1290,7 +1289,7 @@ async function init(){
 // ══════════════════════════════════════════════════
 //  NAV
 // ══════════════════════════════════════════════════
-function buildNav(){ document.getElementById('snav').innerHTML=SDEFS.map((s,i)=>`<button class="sb ${i===0?'on':''}" id="nb${i}" onclick="goTo(${i})"><span class="sn">${i+1}</span><span class="slbl">${s.ttl.split(' ')[0]}</span></button>`).join(''); }
+function buildNav(){ document.getElementById('snav').innerHTML=SDEFS.map((s,i)=>`<button class="sb ${i===0?'on':''}" id="nb${i}" onclick="goTo(${i})"><span class="sn">${i+1}</span><span class="slbl">${esc(s.ttl.length>10?s.ttl.slice(0,9)+'…':s.ttl)}</span></button>`).join(''); }
 function updProg(){ document.getElementById('prog').style.width=((curStep+1)/SDEFS.length*100)+'%'; }
 function goTo(n){ document.getElementById('nb'+curStep)?.classList.remove('on'); curStep=n; document.querySelectorAll('.sec').forEach((el,i)=>el.classList.toggle('on',i===n)); document.getElementById('nb'+n)?.classList.add('on'); updProg(); window.scrollTo({top:0,behavior:'smooth'}); if(n===SDEFS.length-1)buildSummary(); }
 
