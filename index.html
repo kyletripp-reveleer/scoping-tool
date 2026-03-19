@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Customer Scoping</title>
+<title>Clinical Intelligence — Project Scoping</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -47,6 +47,14 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .btn-pri:hover{background:#2563eb;transform:translateY(-1px);box-shadow:0 4px 12px rgba(59,130,246,.3)}
 .btn-gh{background:transparent;color:var(--mu);border:1px solid var(--bd)}
 .btn-gh:hover{border-color:var(--mu);color:var(--tx);background:var(--s2)}
+.gear-wrap{position:relative;display:inline-block}
+.gear-drop{display:none;position:absolute;top:calc(100% + 6px);right:0;background:var(--s1);border:1px solid var(--bd);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.13);min-width:200px;z-index:200;padding:6px}
+.gear-drop.on{display:block}
+.gear-drop-item{display:flex;align-items:center;gap:9px;width:100%;padding:9px 12px;background:none;border:none;border-radius:7px;font-size:12px;font-family:inherit;color:var(--tx);cursor:pointer;text-align:left;transition:background .15s}
+.gear-drop-item:hover{background:var(--s2)}
+.gear-drop-item.danger{color:var(--rd)}
+.gear-drop-item.danger:hover{background:rgba(220,38,38,.07)}
+.gear-drop-divider{height:1px;background:var(--bd);margin:4px 6px}
 .btn-ok{background:var(--gn);color:#fff}
 .btn-ok:hover{background:#15803d}
 .btn-sm{padding:6px 14px;font-size:10px}
@@ -432,7 +440,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 <div class="app">
   <div class="hdr">
     <div class="hdr-l">
-      <div class="tag">Customer Scoping</div>
+      <div class="tag">Clinical Intelligence Platform</div>
       <h1>Project <span>Scoping</span> Document</h1>
     </div>
     <div class="hdr-r">
@@ -444,11 +452,19 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
   <div class="toolbar">
     <div class="sync-pill sy" id="syncPill"><div class="sdot pu"></div><span id="syncLbl">Loading…</span></div>
     <button class="btn btn-gh btn-sm" onclick="window.print()">🖨 Print</button>
-    <button class="btn btn-gh btn-sm" style="color:var(--rd);border-color:var(--rd)" onclick="auth(()=>resetForm())">↺ Reset Form</button>
-    <button class="btn btn-gh btn-sm" onclick="backupData()" title="Download all your saved data as a JSON file">💾 Backup Data</button>
-    <button class="btn btn-gh btn-sm" onclick="document.getElementById('restoreInp').click()" title="Restore from a backup JSON file">📂 Restore Backup</button>
     <input type="file" id="restoreInp" accept=".json" style="display:none" onchange="restoreData(event)">
-    <button class="btn btn-sm" style="background:var(--bl);color:#fff" onclick="exportVersion()" title="Download a self-contained HTML file with all your current structure and answers baked in">⬇ Export HTML</button>
+    <div class="gear-wrap">
+      <button class="btn btn-gh btn-sm" onclick="toggleGearMenu(event)" title="Admin options">⚙️ Admin ▾</button>
+      <div class="gear-drop" id="gearDrop">
+        <button class="gear-drop-item" onclick="closeGearMenu();exportVersion()">⬇ Export HTML</button>
+        <button class="gear-drop-item" onclick="closeGearMenu();backupData()">💾 Backup Data</button>
+        <button class="gear-drop-item" onclick="closeGearMenu();document.getElementById('restoreInp').click()">📂 Restore Backup</button>
+        <div class="gear-drop-divider"></div>
+        <button class="gear-drop-item" onclick="closeGearMenu();openManageModal()">⚙ Manage Customers</button>
+        <div class="gear-drop-divider"></div>
+        <button class="gear-drop-item danger" onclick="closeGearMenu();resetForm()">↺ Reset Form</button>
+      </div>
+    </div>
   </div>
 
   <!-- VERSION BAR -->
@@ -458,8 +474,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
     <span class="ver-badge" id="verBadge">Default</span>
     <div class="ver-actions">
       <button class="btn btn-gh btn-sm" onclick="openVerModal()">⊕ New Customer</button>
-      <button class="btn btn-gh btn-sm" onclick="auth(()=>openManageModal())">⚙ Manage</button>
-      <button class="btn btn-pri btn-sm" onclick="exportVersion()">↓ Export Copy</button>
+      <button class="btn btn-gh btn-sm" id="hiddenBtn" style="display:none" onclick="auth(()=>openHiddenModal())">👁 Hidden Items</button>
     </div>
   </div>
   <!-- MODE SWITCHER -->
@@ -627,9 +642,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 // ══════════════════════════════════════════════════
 const PW = '522522';
 const SK = 'ci-v5';
-const VER_INDEX_KEY  = 'ci-ver-index';       // [{id,name,created}]
-const HIDDEN_KEY     = 'ci-hidden-global';   // global hidden flags
-const STRUCTURE_KEY  = 'ci-structure-global';// global form structure
+const VER_INDEX_KEY = 'ci-ver-index'; // stores [{id,name,created}]
 
 // ══════════════════════════════════════════════════
 //  VERSION MANAGEMENT
@@ -666,17 +679,17 @@ async function switchVersion(id){
   // Reset to defaults before loading new version
   cards = defaultCards();
   SDEFS = [
-    {id:'s0', ico:'🏥', ttl:'Customer Profile',             sub:'Identify the customer type and buying organization'},
-    {id:'s1', ico:'⚙️', ttl:'LOB',                          sub:'Lines of business, members, and risk configuration'},
-    {id:'s2', ico:'🔄', ttl:'Workflow Configuration',        sub:'POC integration and visit workflow enablement'},
-    {id:'s4', ico:'🗄️', ttl:'Data Sources',                 sub:'Configure data types in scope and ingestion method'},
-    {id:'s5', ico:'📝', ttl:'Coding Services',               sub:'Volume, delivery model, and notes'},
-    {id:'sx-1772828549959', ico:'🧪', ttl:'Miscellaneous',   sub:'Additional customer details'},
-    {id:'sx-1772836816552', ico:'🧩', ttl:'Core Config (Imp Only)', sub:'User roles, workflows, risk models, rules'},
-    {id:'s6', ico:'✅', ttl:'Scope Summary',                 sub:'Review your configuration before exporting'},
+    {id:'s0',ico:'🏥',ttl:'Customer Profile',       sub:'Identify the customer type and buying organization'},
+    {id:'s1',ico:'⚙️',ttl:'Platform Configuration', sub:'Lines of business, members, risk & care gaps'},
+    {id:'s2',ico:'🔄',ttl:'Workflow Configuration',  sub:'POC integration and visit workflow enablement'},
+    {id:'s3',ico:'🔗',ttl:'POC Integration Phases',  sub:'EMR integrations by phase'},
+    {id:'s4',ico:'🗄️',ttl:'Data Sources',            sub:'Configure data types in scope and ingestion method'},
+    {id:'s5',ico:'📝',ttl:'Coding Services',         sub:'Volume, delivery model, and notes'},
+    {id:'s6',ico:'⚙️',ttl:'Core Platform Configuration', sub:'User roles, workflows, risk models, rules, and platform settings'},
+    {id:'s7',ico:'✅',ttl:'Scope Summary',           sub:'Review your configuration before exporting'},
   ];
   SEC_CARDS.length = 0;
-  [['c0-org'],['c1-lob','c1-risk'],['c2-workflows'],[],['c4-data'],['c5-coding'],['cx-1772828559357'],['c1-core'],[]].forEach(a=>SEC_CARDS.push(a));
+  [['c0-type','c0-org'],['c1-platform','c1-lob','c1-risk'],['c2-workflows','c2-poc','c3-native','c3-uni'],[],['c4-data'],['c5-coding','c5-notes'],['c1-core'],[]].forEach(a=>SEC_CARDS.push(a));
   await loadData();
   buildVerSelect();
   buildSections();
@@ -827,12 +840,12 @@ function exportVersion(){
   );
 
   var safeTitle = curName.replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  patched = patched.replace(/<title>[^<]*<\/title>/, '<title>Customer Scoping \u2014 ' + safeTitle + '<\/title>');
+  patched = patched.replace(/<title>[^<]*<\/title>/, '<title>CI Scoping \u2014 ' + safeTitle + '<\/title>');
 
   var blob = new Blob([patched], {type:'text/html'});
   var a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'Customer_Scoping_' + curName.replace(/[^a-z0-9]/gi,'_') + '_' + new Date().toISOString().slice(0,10) + '.html';
+  a.download = 'CI_Scoping_' + curName.replace(/[^a-z0-9]/gi,'_') + '_' + new Date().toISOString().slice(0,10) + '.html';
   a.click();
   URL.revokeObjectURL(a.href);
   toast('HTML exported: ' + curName, '\u2193');
@@ -872,64 +885,36 @@ let SDEFS = [
 // ══════════════════════════════════════════════════
 function defaultCards(){
   return {
+    'c0-type': {title:'Type of Customer', fields:[
+      {id:'c0type-f1',lbl:'Customer Type',type:'dropdown',ph:'',hint:'Select the primary customer classification',opts:['Health Plan','ACO','Provider','Payvider'],builtin:true},
+    ]},
     'c0-org': {title:'Organization Details', fields:[
-      {id:'c0type-f1',      lbl:'Customer Type',                                                          type:'chips',    ph:'', hint:'', opts:['Health Plan','ACO','Provider','Payvider'],builtin:true},
-      {id:'c0org-f1',       lbl:'Organization Name',                                                      type:'text',     ph:'e.g. Mass General Brigham', hint:'', opts:[],builtin:true},
-      {id:'f1772828703742', lbl:'Payer/Enabler Name (If applicable - BCBC, Pearl, ETC)',                  type:'text',     ph:'', hint:'', opts:[],builtin:true},
-      {id:'c0org-f2',       lbl:'Primary Contact',                                                        type:'text',     ph:'Full name', hint:'', opts:[],builtin:true},
-      {id:'c0org-f3',       lbl:'Email',                                                                  type:'email',    ph:'contact@org.com', hint:'', opts:[],builtin:true},
-      {id:'c0org-f4',       lbl:'Phone',                                                                  type:'phone',    ph:'+1 (555) 000-0000', hint:'', opts:[],builtin:true},
-      {id:'c0org-f6',       lbl:'Target Go-Live Date',                                                    type:'date',     ph:'', hint:'', opts:[],builtin:true},
+      {id:'c0org-f1',lbl:'Organization Name',type:'text',ph:'e.g. Mass General Brigham',hint:'',opts:[],builtin:true},
+      {id:'c0org-f2',lbl:'Primary Contact',type:'text',ph:'Full name',hint:'',opts:[],builtin:true},
+      {id:'c0org-f3',lbl:'Email',type:'email',ph:'contact@org.com',hint:'',opts:[],builtin:true},
+      {id:'c0org-f4',lbl:'Phone',type:'phone',ph:'+1 (555) 000-0000',hint:'',opts:[],builtin:true},
+      {id:'c0org-f5',lbl:'Buying Organization',type:'dropdown',ph:'',hint:'',opts:['Health Plan','Provider Group','ACO','Parent Entity','Other'],builtin:true},
+      {id:'c0org-f6',lbl:'Target Go-Live Date',type:'date',ph:'',hint:'',opts:[],builtin:true},
+    ]},
+    'c1-platform': {title:'Platform Type', fields:[
+      {id:'c1plat-f1',lbl:'Deployment Platform',type:'dropdown',ph:'',hint:'',opts:['Combined (MA + ACA + MCD)','MA Only','ACA Only','MCD Only','Custom'],builtin:true},
+      {id:'c1plat-f2',lbl:'Standard Input Specs',type:'yesno',ph:'',hint:'',opts:[],builtin:true},
     ]},
     'c1-lob': {title:'Lines of Business & Members', fields:[
-      {id:'c1lob-f1',       lbl:'Active Lines of Business',                                               type:'chips',    ph:'', hint:'Select all that apply', opts:['Medicare Advantage (MA)','ACA / Commercial','Medicaid (MCD)'],builtin:true},
-      {id:'c1lob-f2',       lbl:'MA Members',                                                             type:'number',   ph:'0', hint:'', opts:[],builtin:true},
-      {id:'c1lob-f3',       lbl:'ACA/Commercial Members',                                                 type:'number',   ph:'0', hint:'', opts:[],builtin:true},
-      {id:'c1lob-f4',       lbl:'MCD Members',                                                            type:'number',   ph:'0', hint:'', opts:[],builtin:true},
-      {id:'f1772827081304', lbl:'Number of Providers',                                                    type:'number',   ph:'0', hint:'', opts:[],builtin:true},
+      {id:'c1lob-f1',lbl:'Active Lines of Business',type:'chips',ph:'',hint:'Select all that apply',opts:['Medicare Advantage (MA)','ACA / Commercial','Medicaid (MCD)','DSNP','MAPD'],builtin:true},
+      {id:'c1lob-f2',lbl:'MA Members',type:'number',ph:'0',hint:'',opts:[],builtin:true},
+      {id:'c1lob-f3',lbl:'ACA Members',type:'number',ph:'0',hint:'',opts:[],builtin:true},
+      {id:'c1lob-f4',lbl:'MCD Members',type:'number',ph:'0',hint:'',opts:[],builtin:true},
     ]},
     'c1-risk': {title:'Risk & Care Gap Configuration', fields:[
-      {id:'c1risk-f1',      lbl:'Source of Risk Gaps',                                                    type:'chips',    ph:'', hint:'', opts:['CI Algorithms','Third-Party','Both'],builtin:true},
-      {id:'f1772827185344', lbl:'If both, please explain',                                                type:'text',     ph:'', hint:'', opts:[],builtin:true},
-      {id:'c1risk-f2',      lbl:'Source of Care Gaps',                                                    type:'chips',    ph:'', hint:'', opts:['N/A','CI Algorithms','Third-Party','Both'],builtin:true},
-      {id:'f1772827209952', lbl:'If both, please explain',                                                type:'text',     ph:'', hint:'', opts:[],builtin:true},
-    ]},
-    'c2-workflows': {title:'Workflow Configuration', fields:[
-      {id:'c2wf-f1',        lbl:'Will the customer use our Pre-Visit CDI workflow?',                      type:'yesno',    ph:'', hint:'', opts:[],builtin:true},
-      {id:'c2wf-f2',        lbl:'POC Point of Care Integration?',                                         type:'yesno',    ph:'', hint:'', opts:[],builtin:true},
-      {id:'c3nat-f1',       lbl:'EMR Vendor',                                                             type:'chips',    ph:'', hint:'', opts:['Epic','athenaNet','Cerner','Other'],builtin:true},
-      {id:'f1772827647707', lbl:'Epic OPA or Sidebar?',                                                   type:'chips',    ph:'', hint:'', opts:['OPA/BPA','Sidebar'],builtin:true},
-      {id:'f1772828009028', lbl:'Is the customer on the new Risk Adjustment (RAD/RED) Framework?',        type:'yesno',    ph:'', hint:'', opts:[],builtin:true},
-      {id:'c3nat-f2',       lbl:'Integration Type',                                                       type:'chips',    ph:'', hint:'', opts:['Native/Bidirectional','Unidirectional'],builtin:true},
-      {id:'f1772827529263', lbl:"If we don't push back to the EMR, can the customer give us provider actions somehow? how?", type:'text', ph:'', hint:'', opts:[],builtin:true},
-      {id:'c3nat-f3',       lbl:'How many Instances?',                                                    type:'number',   ph:'1', hint:'', opts:[],builtin:true},
-      {id:'c2wf-f3',        lbl:'Will the customer use our Post-Visit coder workflow?',                   type:'yesno',    ph:'', hint:'', opts:[],builtin:true},
-      {id:'f1772828955249', lbl:'Will we pull data from HIEs for this customer?',                         type:'yesno',    ph:'', hint:'', opts:[],builtin:true},
-      {id:'f1772829005411', lbl:'HIE Pull Frequency',                                                     type:'chips',    ph:'', hint:'', opts:['2x annually (standard)','Appointment Trigger (Value Only)'],builtin:true},
-    ]},
-    'c4-data': {title:'Data Ingestion Configuration', fields:[
-      {id:'c4dat-f1',       lbl:'Patient Data',                                                           type:'chips',    ph:'', hint:'', opts:['API','Flat File'],builtin:true},
-      {id:'c4dat-f2',       lbl:'Coverage Data',                                                          type:'chips',    ph:'', hint:'', opts:['API','Flat File'],builtin:true},
-      {id:'c4dat-f3',       lbl:'Practitioner Data',                                                      type:'chips',    ph:'', hint:'', opts:['API','Flat File'],builtin:true},
-      {id:'c4dat-f4',       lbl:'Claims Data',                                                            type:'chips',    ph:'', hint:'', opts:['API','Flat File'],builtin:true},
-      {id:'c4dat-f5',       lbl:'Appointment Data',                                                       type:'chips',    ph:'', hint:'', opts:['API','Flat File'],builtin:true},
-      {id:'c4dat-f6',       lbl:'Third-Party Risk Data (External Conditions)',                             type:'chips',    ph:'', hint:'', opts:['API','Flat File','N/A'],builtin:true},
-    ]},
-    'c5-coding': {title:'Coding Volume & Delivery', fields:[
-      {id:'f1772828112218', lbl:'Is the customer interested in coding services?',                         type:'yesno',    ph:'', hint:'', opts:[],builtin:true},
-      {id:'c5cod-f1',       lbl:'Pre-Visit Annual Volume',                                                type:'number',   ph:'175,000', hint:'', opts:[],builtin:true},
-      {id:'c5cod-f2',       lbl:'Pre-Visit Delivery Model',                                               type:'dropdown', ph:'', hint:'', opts:['Onshore','Offshore','Price Both'],builtin:true},
-      {id:'c5cod-f3',       lbl:'Post-Visit Annual Volume',                                               type:'number',   ph:'350,000', hint:'', opts:[],builtin:true},
-      {id:'c5cod-f4',       lbl:'Post-Visit Delivery Model',                                              type:'dropdown', ph:'', hint:'', opts:['Onshore','Offshore','Price Both'],builtin:true},
-    ]},
-    'cx-1772828559357': {title:'Miscellaneous', fields:[
-      {id:'f1772828638962', lbl:'Does the customer need SAML SSO (single sign-on) for CDI Nurses?',      type:'yesno',    ph:'', hint:'', opts:[],builtin:true},
-      {id:'f1772828653034', lbl:'Does the customer need standard quality measures displayed?',            type:'yesno',    ph:'', hint:'', opts:[],builtin:true},
-      {id:'f1772828674714', lbl:'What else should we know about this customer?',                          type:'textarea', ph:'', hint:'', opts:[],builtin:true},
+      {id:'c1risk-f1',lbl:'Source of Risk Gaps',type:'dropdown',ph:'',hint:'CI algorithms, third-party, or both',opts:['CI Algorithms','Third-Party','Both'],builtin:true},
+      {id:'c1risk-f2',lbl:'Source of Care Gaps',type:'dropdown',ph:'',hint:'',opts:['N/A','CI Algorithms','Third-Party','Both'],builtin:true},
+      {id:'c1risk-f3',lbl:'IHE Data Pull',type:'yesno',ph:'',hint:'',opts:[],builtin:true},
+      {id:'c1risk-f4',lbl:'IHE Pull Frequency',type:'dropdown',ph:'',hint:'Standard: 2× annually',opts:['2× Annually (Standard)','Appointment Trigger','Quarterly','Custom'],builtin:true},
     ]},
     'c1-core': {title:'Core Platform Configuration', fields:[
-      {id:'c1core-f01',lbl:'CDI',                                     type:'yesno',ph:'',hint:'User Roles • Default: Yes',opts:[],builtin:true},
-      {id:'c1core-f02',lbl:'CDI Restricted',                          type:'yesno',ph:'',hint:'User Roles',opts:[],builtin:true},
+      {id:'c1core-f01',lbl:'CDI',                                      type:'yesno',ph:'',hint:'User Roles • Default: Yes',opts:[],builtin:true},
+      {id:'c1core-f02',lbl:'CDI Restricted',                           type:'yesno',ph:'',hint:'User Roles',opts:[],builtin:true},
       {id:'c1core-f03',lbl:'Provider',                                 type:'yesno',ph:'',hint:'User Roles • Default: Yes',opts:[],builtin:true},
       {id:'c1core-f04',lbl:'Coder',                                    type:'yesno',ph:'',hint:'User Roles • Default: Yes',opts:[],builtin:true},
       {id:'c1core-f05',lbl:'Appointment Based',                        type:'yesno',ph:'',hint:'Appointment & Encounter Workflow',opts:[],builtin:true},
@@ -937,11 +922,11 @@ function defaultCards(){
       {id:'c1core-f07',lbl:'Auto-Routing Configuration',               type:'yesno',ph:'',hint:'Appointment & Encounter Workflow',opts:[],builtin:true},
       {id:'c1core-f08',lbl:'100% Encounters to CDI',                   type:'yesno',ph:'',hint:'Appointment & Encounter Workflow',opts:[],builtin:true},
       {id:'c1core-f09',lbl:'CDI Lite',                                 type:'yesno',ph:'',hint:'Appointment & Encounter Workflow',opts:[],builtin:true},
-      {id:'c1core-f10',lbl:'Provider-Only',                            type:'yesno',ph:'',hint:'Appointment & Encounter Workflow',opts:[],builtin:true},
+      {id:'c1core-f10',lbl:'Provider-Only',                            type:'yesno',ph:'',hint:'Appointment & Encounter Workflow • typically used with tech-only rule filter',opts:[],builtin:true},
       {id:'c1core-f11',lbl:'Accept',                                   type:'yesno',ph:'',hint:'Provider Tags',opts:[],builtin:true},
       {id:'c1core-f12',lbl:'Dismiss',                                  type:'yesno',ph:'',hint:'Provider Tags',opts:[],builtin:true},
       {id:'c1core-f13',lbl:'Not Evaluated',                            type:'yesno',ph:'',hint:'Provider Tags',opts:[],builtin:true},
-      {id:'c1core-f14',lbl:'CMS-V28',                                  type:'yesno',ph:'',hint:'Risk Models',opts:[],builtin:true},
+      {id:'c1core-f14',lbl:'CMS-V28',                                  type:'yesno',ph:'',hint:'Risk Models • specify if RxHCCs should be added',opts:[],builtin:true},
       {id:'c1core-f15',lbl:'HHS-V07',                                  type:'yesno',ph:'',hint:'Risk Models',opts:[],builtin:true},
       {id:'c1core-f16',lbl:'MCD',                                      type:'yesno',ph:'',hint:'Risk Models',opts:[],builtin:true},
       {id:'c1core-f17',lbl:'Claims',                                   type:'yesno',ph:'',hint:'Rules',opts:[],builtin:true},
@@ -963,10 +948,55 @@ function defaultCards(){
       {id:'c1core-f33',lbl:'Specialty: Ophthalmology',                 type:'yesno',ph:'',hint:'Rule Filters',opts:[],builtin:true},
       {id:'c1core-f34',lbl:'Specialty: Pulmonology',                   type:'yesno',ph:'',hint:'Rule Filters',opts:[],builtin:true},
       {id:'c1core-f35',lbl:'Specialty: Wound Care',                    type:'yesno',ph:'',hint:'Rule Filters',opts:[],builtin:true},
-      {id:'c1core-f36',lbl:'MFA for App Users (Email)',                 type:'yesno',ph:'',hint:'MISC • Default: Yes',opts:[],builtin:true},
-      {id:'c1core-f37',lbl:'MFA for App Users (QR Code)',               type:'yesno',ph:'',hint:'MISC',opts:[],builtin:true},
-      {id:'c1core-f38',lbl:'SSO',                                       type:'yesno',ph:'',hint:'MISC',opts:[],builtin:true},
-      {id:'c1core-f39',lbl:'Risk Adjustment Claim Eligibility',         type:'yesno',ph:'',hint:'MISC',opts:[],builtin:true},
+      {id:'c1core-f36',lbl:'MFA for App Users (Email)',                type:'yesno',ph:'',hint:'MISC • Default: Yes',opts:[],builtin:true},
+      {id:'c1core-f37',lbl:'MFA for App Users (QR Code)',              type:'yesno',ph:'',hint:'MISC',opts:[],builtin:true},
+      {id:'c1core-f38',lbl:'SSO',                                      type:'yesno',ph:'',hint:'MISC',opts:[],builtin:true},
+      {id:'c1core-f39',lbl:'Risk Adjustment Claim Eligibility',        type:'yesno',ph:'',hint:'MISC',opts:[],builtin:true},
+    ]},
+    'c2-poc': {title:'POC Integration', fields:[
+      {id:'c2poc-f1',lbl:'POC Integration Enabled',type:'yesno',ph:'',hint:'"No" = Portal/Paper only',opts:[],builtin:true},
+      {id:'c2poc-f2',lbl:'Exceptions / Customizations',type:'yesno',ph:'',hint:'',opts:[],builtin:true},
+      {id:'c2poc-f3',lbl:'Customization Notes',type:'textarea',ph:'Describe exceptions or custom builds…',hint:'',opts:[],builtin:true},
+    ]},
+    'c2-workflows': {title:'Visit Workflows', fields:[
+      {id:'c2wf-f1',lbl:'Pre-Visit',type:'yesno',ph:'',hint:'',opts:[],builtin:true},
+      {id:'c2wf-f2',lbl:'During-Visit',type:'yesno',ph:'',hint:'',opts:[],builtin:true},
+      {id:'c2wf-f3',lbl:'Post-Visit',type:'yesno',ph:'',hint:'',opts:[],builtin:true},
+    ]},
+    'c3-native': {title:'Native EMR Integrations', fields:[
+      {id:'c3nat-f1',lbl:'EMR Phase 1',type:'dropdown',ph:'',hint:'Primary integration phase',opts:['Epic','Cerner','Athena','Allscripts','Other'],builtin:true},
+      {id:'c3nat-f2',lbl:'Integration Type',type:'dropdown',ph:'',hint:'',opts:['Native/Bidirectional','Bidirectional','Unidirectional'],builtin:true},
+      {id:'c3nat-f3',lbl:'Instances',type:'number',ph:'1',hint:'Number of EMR instances',opts:[],builtin:true},
+      {id:'c3nat-f4',lbl:'Target Providers',type:'number',ph:'0',hint:'',opts:[],builtin:true},
+      {id:'c3nat-f5',lbl:'Attributed Lives',type:'number',ph:'150,000',hint:'',opts:[],builtin:true},
+      {id:'c3nat-f6',lbl:'Integration Notes',type:'textarea',ph:'Phase details, special requirements…',hint:'',opts:[],builtin:true},
+    ]},
+    'c3-uni': {title:'Unidirectional Pull Only', fields:[
+      {id:'c3uni-f1',lbl:'EMR System',type:'text',ph:'Specify EMR name',hint:'',opts:[],builtin:true},
+      {id:'c3uni-f2',lbl:'Data Format',type:'dropdown',ph:'',hint:'',opts:['CCD','FHIR','HL7','CSV'],builtin:true},
+      {id:'c3uni-f3',lbl:'Interop Provider',type:'text',ph:'e.g. REDOX',hint:'',opts:[],builtin:true},
+      {id:'c3uni-f4',lbl:'Instances',type:'number',ph:'1',hint:'',opts:[],builtin:true},
+      {id:'c3uni-f5',lbl:'Attributed Lives',type:'number',ph:'0',hint:'',opts:[],builtin:true},
+    ]},
+    'c4-data': {title:'Data Ingestion Configuration', fields:[
+      {id:'c4dat-f1',lbl:'Patient Data',type:'dropdown',ph:'',hint:'',opts:['Flat File','API','FHIR','HL7'],builtin:true},
+      {id:'c4dat-f2',lbl:'Coverage Data',type:'dropdown',ph:'',hint:'',opts:['API','Flat File','FHIR','HL7'],builtin:true},
+      {id:'c4dat-f3',lbl:'Practitioner Data',type:'dropdown',ph:'',hint:'',opts:['API','Flat File','FHIR','HL7'],builtin:true},
+      {id:'c4dat-f4',lbl:'Claims Data',type:'dropdown',ph:'',hint:'',opts:['API','Flat File','FHIR','HL7'],builtin:true},
+      {id:'c4dat-f5',lbl:'Appointment Data',type:'dropdown',ph:'',hint:'',opts:['API','Flat File','FHIR','HL7'],builtin:true},
+      {id:'c4dat-f6',lbl:'Third-Party Risk Data',type:'dropdown',ph:'',hint:'',opts:['API','Flat File','FHIR','HL7'],builtin:true},
+      {id:'c4dat-f7',lbl:'Third-Party Quality Data',type:'dropdown',ph:'',hint:'',opts:['API','Flat File','FHIR','HL7'],builtin:true},
+    ]},
+    'c5-coding': {title:'Coding Volume & Delivery', fields:[
+      {id:'c5cod-f1',lbl:'Pre-Visit Annual Volume',type:'number',ph:'175,000',hint:'Expected encounters per year',opts:[],builtin:true},
+      {id:'c5cod-f2',lbl:'Pre-Visit Delivery Model',type:'dropdown',ph:'',hint:'',opts:['Onshore','Offshore','Price Both'],builtin:true},
+      {id:'c5cod-f3',lbl:'Post-Visit Annual Volume',type:'number',ph:'350,000',hint:'',opts:[],builtin:true},
+      {id:'c5cod-f4',lbl:'Post-Visit Delivery Model',type:'dropdown',ph:'',hint:'',opts:['Onshore','Offshore','Price Both'],builtin:true},
+    ]},
+    'c5-notes': {title:'Additional Notes & Flags', fields:[
+      {id:'c5not-f1',lbl:'Open Items',type:'textarea',ph:'e.g. DXCG MCD Mapping, confirm Epic instance count…',hint:'',opts:[],builtin:true},
+      {id:'c5not-f2',lbl:'Internal Owner',type:'text',ph:'Assigned team member',hint:'',opts:[],builtin:true},
+      {id:'c5not-f3',lbl:'Next Action',type:'text',ph:'e.g. Send SOW, schedule discovery call',hint:'',opts:[],builtin:true},
     ]},
   };
 }
@@ -975,11 +1005,6 @@ function defaultCards(){
 //  STATE
 // ══════════════════════════════════════════════════
 let cards = defaultCards();   // { cid: { title, fields[] } }
-let gstruct = {
-  fieldDefs:{}, fieldOrder:{}, hiddenFields:{}, hiddenCards:{},
-  hiddenSections:{}, cardTitles:{}, newFields:{}, newCards:{},
-  sdefs:null, secCards:null
-};
 let curStep = 0;
 let authed = false;
 let pendingFn = null;
@@ -992,7 +1017,7 @@ let dragCid = null, dragFi = null;
 
 // Section → card mapping
 const SEC_CARDS = [
-  ['c0-org'],
+  ['c0-type','c0-org'],
   ['c1-platform','c1-lob','c1-risk'],
   ['c2-workflows','c2-poc','c3-native','c3-uni'],
   [],
@@ -1048,46 +1073,94 @@ function setSync(s,l){
   document.getElementById('syncLbl').textContent=l;
 }
 
+async function loadVerIndex(){
+  try{
+    const val=await store.get(VER_INDEX_KEY);
+    if(val){ const parsed=JSON.parse(val); if(Array.isArray(parsed)&&parsed.length) verIndex=parsed; }
+  }catch(e){}
+}
+
+async function saveVerIndex(){
+  try{ await store.set(VER_INDEX_KEY,JSON.stringify(verIndex)); }catch(e){}
+}
 
 async function loadData(){
   try{
-    cards=defaultCards();
-    applyGStruct();
-    var raw=await store.get(verStorageKey(curVerId));
-    if(raw){
-      var saved=JSON.parse(raw);
-      var vals=saved.vals||{};
-      if(!saved.vals&&saved.cards){
-        Object.values(saved.cards).forEach(function(card){
-          (card.fields||[]).forEach(function(f){
-            if(f.id&&f.val!==undefined&&f.val!==null&&f.val!=='') vals[f.id]=f.val;
-          });
+    const val=await store.get(verStorageKey(curVerId));
+    if(val){
+      const saved=JSON.parse(val);
+      // Restore section/phase definitions
+      if(Array.isArray(saved.sdefs) && saved.sdefs.length) SDEFS = saved.sdefs;
+      if(Array.isArray(saved.secCards) && saved.secCards.length){
+        SEC_CARDS.length = 0;
+        saved.secCards.forEach(arr => SEC_CARDS.push(arr));
+      }
+      if(saved.cards){
+        Object.keys(saved.cards).forEach(cid=>{
+          if(!cards[cid]) cards[cid] = {title: saved.cards[cid].title || cid, fields:[]};
+          cards[cid].fields=saved.cards[cid].fields;
+          if(saved.cards[cid].title) cards[cid].title=saved.cards[cid].title;
         });
       }
-      Object.values(cards).forEach(function(card){
-        (card.fields||[]).forEach(function(f){
-          if(vals[f.id]!==undefined) f.val=vals[f.id];
+      if(Array.isArray(saved.deleted)){
+        saved.deleted.forEach(cid=>{
+          delete cards[cid];
+          SEC_CARDS.forEach(arr=>{const i=arr.indexOf(cid);if(i>-1)arr.splice(i,1);});
         });
+      }
+      // ── Merge any new builtin cards added since this snapshot was saved ──
+      const defaults = defaultCards();
+      // Map of cid → preferred section title (for fuzzy matching against saved SDEFS)
+      const cidSectionHint = {
+        'c0-type':'Customer Profile','c0-org':'Customer Profile',
+        'c1-platform':'Platform Configuration','c1-lob':'Platform Configuration','c1-risk':'Platform Configuration','c1-core':'Platform Configuration',
+        'c2-workflows':'Workflow Configuration','c2-poc':'Workflow Configuration',
+        'c3-native':'POC Integration','c3-uni':'POC Integration',
+        'c4-data':'Data Sources',
+        'c5-coding':'Coding Services','c5-notes':'Coding Services',
+      };
+      const defaultSecCards = [['c0-type','c0-org'],['c1-platform','c1-lob','c1-risk'],['c2-workflows','c2-poc','c3-native','c3-uni'],[],['c4-data'],['c5-coding','c5-notes'],['c1-core'],[]];
+      Object.keys(defaults).forEach(cid => {
+        // Add missing card to cards object
+        if (!cards[cid]) cards[cid] = defaults[cid];
+        // Add to SEC_CARDS if not already present anywhere
+        const alreadyPlaced = SEC_CARDS.some(arr => arr.includes(cid));
+        if (!alreadyPlaced) {
+          // Try to find section by title hint first
+          const hint = cidSectionHint[cid] || '';
+          let targetSi = -1;
+          if (hint) {
+            targetSi = SDEFS.findIndex(s => s.ttl.toLowerCase().includes(hint.toLowerCase().split(' ')[0]));
+          }
+          // Fallback: use default section index
+          if (targetSi === -1) {
+            defaultSecCards.forEach((arr, si) => { if (arr.includes(cid) && si < SEC_CARDS.length) targetSi = si; });
+          }
+          if (targetSi >= 0 && SEC_CARDS[targetSi]) SEC_CARDS[targetSi].push(cid);
+        }
       });
     }
-    setSync('ok',inClaude?'Synced':'Saved locally');
-  }catch(e){console.error('[loadData]',e);setSync('ok','Ready');}
+    setSync('ok', inClaude ? 'Synced' : 'Saved locally');
+  }catch(e){ setSync('ok','Ready'); }
 }
 
 async function saveData(){
   setSync('sy','Saving…');
   try{
-    var vals={};
-    Object.values(cards).forEach(function(card){
-      (card.fields||[]).forEach(function(f){
-        if(f.val!==undefined&&f.val!==null&&f.val!==''&&!(Array.isArray(f.val)&&f.val.length===0))
-          vals[f.id]=f.val;
-      });
+    const allDefaults=Object.keys(defaultCards());
+    const deleted=allDefaults.filter(cid=>!cards[cid]);
+    const cardsPayload={};
+    Object.keys(cards).forEach(cid=>{
+      cardsPayload[cid]={title:cards[cid].title,fields:cards[cid].fields};
     });
-    await store.set(verStorageKey(curVerId),JSON.stringify({vals:vals}));
-    setSync('ok',inClaude?'Saved · shared':'Saved locally');
-    setTimeout(function(){setSync('ok',inClaude?'Synced':'Saved locally');},2200);
-  }catch(e){setSync('er','Save failed');toast('Could not save','⚠️');}
+    await store.set(verStorageKey(curVerId),JSON.stringify({
+      cards:cardsPayload, deleted,
+      sdefs: SDEFS,
+      secCards: SEC_CARDS,
+    }));
+    setSync('ok', inClaude ? 'Saved · shared' : 'Saved locally');
+    setTimeout(()=>setSync('ok', inClaude ? 'Synced' : 'Saved locally'),2200);
+  }catch(e){ setSync('er','Save failed'); toast('Could not save','⚠️'); }
 }
 
 // ══════════════════════════════════════════════════
@@ -1161,133 +1234,9 @@ async function resetForm() {
   toast('Form reset ✓', '↺');
 }
 
-
-// ══════════════════════════════════════════════════
-//  GLOBAL STRUCTURE + HIDDEN FLAGS
-// ══════════════════════════════════════════════════
-
-function saveGStruct(){ try{ localStorage.setItem(STRUCTURE_KEY, JSON.stringify(gstruct)); }catch(e){} }
-function saveHidden(){  try{ localStorage.setItem(HIDDEN_KEY,    JSON.stringify({fields:gstruct.hiddenFields,cards:gstruct.hiddenCards,sections:gstruct.hiddenSections})); }catch(e){} }
-
-function loadGStruct(){
-  try{
-    var rs = localStorage.getItem(STRUCTURE_KEY);
-    if(rs){ var s=JSON.parse(rs);
-      gstruct.fieldDefs=s.fieldDefs||{}; gstruct.fieldOrder=s.fieldOrder||{};
-      gstruct.hiddenFields=s.hiddenFields||{}; gstruct.hiddenCards=s.hiddenCards||{};
-      gstruct.hiddenSections=s.hiddenSections||{}; gstruct.cardTitles=s.cardTitles||{};
-      gstruct.newFields=s.newFields||{}; gstruct.newCards=s.newCards||{};
-      gstruct.sdefs=s.sdefs||null; gstruct.secCards=s.secCards||null;
-    }
-    // Also load old hidden key if exists
-    var rh = localStorage.getItem(HIDDEN_KEY);
-    if(rh){ var h=JSON.parse(rh);
-      if(h.fields)   gstruct.hiddenFields   = Object.assign(gstruct.hiddenFields,   h.fields);
-      if(h.cards)    gstruct.hiddenCards    = Object.assign(gstruct.hiddenCards,    h.cards);
-      if(h.sections) gstruct.hiddenSections = Object.assign(gstruct.hiddenSections, h.sections);
-    }
-  }catch(e){ console.error('[loadGStruct]',e); }
-}
-
-function applyGStruct(){
-  try{
-    Object.keys(gstruct.fieldDefs).forEach(function(fid){
-      var ov=gstruct.fieldDefs[fid];
-      Object.values(cards).forEach(function(card){
-        var f=(card.fields||[]).find(function(x){return x.id===fid;});
-        if(f) Object.assign(f,ov);
-      });
-    });
-    Object.keys(gstruct.cardTitles).forEach(function(cid){
-      if(cards[cid]) cards[cid].title=gstruct.cardTitles[cid];
-    });
-    Object.keys(gstruct.newFields).forEach(function(cid){
-      if(!cards[cid]) return;
-      var ex=new Set((cards[cid].fields||[]).map(function(f){return f.id;}));
-      (gstruct.newFields[cid]||[]).forEach(function(f){
-        if(!ex.has(f.id)) cards[cid].fields.push(JSON.parse(JSON.stringify(f)));
-      });
-    });
-    Object.keys(gstruct.fieldOrder).forEach(function(cid){
-      if(!cards[cid]) return;
-      var order=gstruct.fieldOrder[cid], map={};
-      (cards[cid].fields||[]).forEach(function(f){map[f.id]=f;});
-      var ordered=[];
-      order.forEach(function(fid){if(map[fid])ordered.push(map[fid]);});
-      (cards[cid].fields||[]).forEach(function(f){if(!order.includes(f.id))ordered.push(f);});
-      cards[cid].fields=ordered;
-    });
-    Object.keys(gstruct.newCards).forEach(function(cid){
-      if(!cards[cid]){
-        var nc=gstruct.newCards[cid];
-        cards[cid]={title:nc.title,fields:(nc.fields||[]).map(function(f){return JSON.parse(JSON.stringify(f));})};
-        var si=nc.secIdx;
-        if(si!==undefined&&SEC_CARDS[si]&&!SEC_CARDS[si].includes(cid)) SEC_CARDS[si].push(cid);
-      }
-    });
-    if(gstruct.sdefs&&gstruct.sdefs.length){
-      SDEFS.length=0; gstruct.sdefs.forEach(function(s){SDEFS.push(Object.assign({},s));});
-    }
-    if(gstruct.secCards&&gstruct.secCards.length){
-      SEC_CARDS.length=0; gstruct.secCards.forEach(function(a){SEC_CARDS.push(a.slice());});
-    }
-  }catch(e){console.error('[applyGStruct]',e);}
-}
-
-function updateHiddenBtn(){
-  var any=Object.keys(gstruct.hiddenFields).length||Object.keys(gstruct.hiddenCards).length||Object.keys(gstruct.hiddenSections).length;
-  var btn=document.getElementById('hiddenBtn'); if(btn) btn.style.display=any?'':'none';
-}
-function openHiddenModal(){ renderHiddenModal(); document.getElementById('hiddenOv').classList.add('on'); }
-function closeHiddenModal(){ document.getElementById('hiddenOv').classList.remove('on'); }
-function renderHiddenModal(){
-  var defs=defaultCards(); var html='';
-  var hs=SDEFS.filter(function(s){return gstruct.hiddenSections[s.id];});
-  if(hs.length){
-    html+='<div class="ml">Hidden Phases</div>';
-    hs.forEach(function(s){
-      html+='<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--s2);border:1px solid var(--bd);border-radius:7px;margin-bottom:8px">'
-           +'<span>'+esc(s.ico)+' <strong>'+esc(s.ttl)+'</strong></span>'
-           +'<button class="btn btn-gh btn-sm" onclick="restoreSection(&quot;'+s.id+'&quot;)">↩ Restore</button></div>';
-    });
-  }
-  var hc=Object.keys(gstruct.hiddenCards);
-  if(hc.length){
-    html+='<div class="ml" style="margin-top:14px">Hidden Cards</div>';
-    hc.forEach(function(cid){
-      var t=(defs[cid]||cards[cid]||{}).title||cid;
-      html+='<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--s2);border:1px solid var(--bd);border-radius:7px;margin-bottom:8px">'
-           +'<strong>'+esc(t)+'</strong>'
-           +'<button class="btn btn-gh btn-sm" onclick="restoreCard(&quot;'+cid+'&quot;)">↩ Restore</button></div>';
-    });
-  }
-  var hf=Object.keys(gstruct.hiddenFields);
-  if(hf.length){
-    html+='<div class="ml" style="margin-top:14px">Hidden Fields</div>';
-    hf.forEach(function(fid){
-      var lbl=fid;
-      Object.values(defs).forEach(function(c){(c.fields||[]).forEach(function(f){if(f.id===fid)lbl=f.lbl;});});
-      if(gstruct.fieldDefs[fid]&&gstruct.fieldDefs[fid].lbl) lbl=gstruct.fieldDefs[fid].lbl;
-      html+='<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--s2);border:1px solid var(--bd);border-radius:7px;margin-bottom:8px">'
-           +esc(lbl)
-           +'<button class="btn btn-gh btn-sm" onclick="restoreField(&quot;'+fid+'&quot;)">↩ Restore</button></div>';
-    });
-  }
-  if(!html) html='<p style="color:var(--mu);font-size:12px;text-align:center;padding:20px 0">No hidden items.</p>';
-  document.getElementById('hiddenModalBody').innerHTML=html;
-}
-function restoreSection(sid){ delete gstruct.hiddenSections[sid]; saveGStruct(); updateHiddenBtn(); rebuildAll(); renderHiddenModal(); toast('Phase restored','↩'); }
-function restoreCard(cid){ delete gstruct.hiddenCards[cid]; saveGStruct(); updateHiddenBtn(); rebuildAll(); renderHiddenModal(); toast('Card restored','↩'); }
-function restoreField(fid){
-  delete gstruct.hiddenFields[fid]; saveGStruct(); updateHiddenBtn();
-  Object.keys(cards).forEach(function(cid){if((cards[cid]&&cards[cid].fields||[]).some(function(f){return f.id===fid;}))refreshCard(cid);});
-  renderHiddenModal(); toast('Field restored','↩');
-}
-
 async function init(){
   setSync('sy','Loading…');
   await loadVerIndex();
-  loadGStruct();
   await loadData();
   document.getElementById('ldr').classList.add('off');
   buildVerSelect();
@@ -1860,6 +1809,20 @@ function buildSummary(){
 // ══════════════════════════════════════════════════
 //  TOAST / HELPERS
 // ══════════════════════════════════════════════════
+function toggleGearMenu(e){
+  e.stopPropagation();
+  if(!authed){ auth(function(){ document.getElementById('gearDrop').classList.add('on'); }); return; }
+  var d=document.getElementById('gearDrop');
+  d.classList.toggle('on');
+}
+function closeGearMenu(){
+  document.getElementById('gearDrop').classList.remove('on');
+}
+// Close gear menu when clicking outside
+document.addEventListener('click', function(e){
+  if(!e.target.closest('.gear-wrap')) closeGearMenu();
+});
+
 function toast(msg,ico='✓'){const t=document.getElementById('toast');document.getElementById('tMsg').textContent=msg;document.getElementById('tIco').textContent=ico;t.classList.add('on');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('on'),2400);}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
@@ -1879,7 +1842,7 @@ function backupData(){
   const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `Customer_Scoping_Backup_${new Date().toISOString().slice(0,10)}.json`;
+  a.download = `MGB_Scoping_Backup_${new Date().toISOString().slice(0,10)}.json`;
   a.click();
   URL.revokeObjectURL(a.href);
   toast('Backup downloaded!','💾');
@@ -3083,18 +3046,7 @@ function hookPipelineLiveUpdates() {
 }
 
 
-// Safe init with loader timeout
-(function(){
-  var t = setTimeout(function(){
-    var ldr = document.getElementById('ldr');
-    if(ldr) ldr.classList.add('off');
-  }, 5000);
-  init().catch(function(e){ console.error(e); }).finally(function(){
-    clearTimeout(t);
-    var ldr = document.getElementById('ldr');
-    if(ldr) ldr.classList.add('off');
-  });
-})();
+init();
 </script>
 
 <!-- TASK EDIT MODAL -->
