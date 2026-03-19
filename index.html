@@ -1215,12 +1215,15 @@ let gstruct = {
 };
 
 function saveGStruct(){
-  try{ localStorage.setItem(GLOBAL_STRUCT_KEY, JSON.stringify(gstruct)); }catch(e){}
+  var val=JSON.stringify(gstruct);
+  try{ localStorage.setItem(GLOBAL_STRUCT_KEY, val); }catch(e){}
+  store.set(GLOBAL_STRUCT_KEY, val).catch(function(e){ console.warn('[saveGStruct SP]',e); });
 }
 
-function loadGStruct(){
+async function loadGStruct(){
   try{
-    var raw=localStorage.getItem(GLOBAL_STRUCT_KEY);
+    var raw=await store.get(GLOBAL_STRUCT_KEY);
+    if(!raw) raw=localStorage.getItem(GLOBAL_STRUCT_KEY);
     if(!raw) return;
     var s=JSON.parse(raw);
     gstruct.fieldDefs      = s.fieldDefs      ||{};
@@ -1306,7 +1309,16 @@ function restoreField(fid){ delete gstruct.hiddenFields[fid]; saveGStruct(); upd
 async function init(){
   setSync('sy','Loading…');
   await loadVerIndex();
-  loadGStruct();
+  await loadGStruct();
+  // Test SharePoint connection BEFORE loading data so sync label is correct
+  try{
+    var testR = await fetch(SP_GET_URL, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({key:'ci-sp-test'})
+    });
+    store._spOk = testR.ok;
+  }catch(e){ store._spOk = false; }
   await loadData();
   document.getElementById('ldr').classList.add('off');
   buildVerSelect();
@@ -1320,25 +1332,7 @@ async function init(){
   await loadPipeGlobal();
   await loadPipeData();
   hookPipelineLiveUpdates();
-  // Test SharePoint connection on load
-  try{
-    var testR = await fetch(SP_GET_URL, {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({key:'ci-sp-test'})
-    });
-    if(testR.ok){
-      store._spOk = true;
-      setSync('ok','Connected to SharePoint');
-      setTimeout(function(){setSync('ok','Saved · SharePoint');},2000);
-    } else {
-      console.warn('[SP test failed]', testR.status);
-      setSync('ok','Saved locally (SP error '+testR.status+')');
-    }
-  }catch(e){
-    console.warn('[SP test error]', e);
-    setSync('ok','Saved locally (SP unreachable)');
-  }
+
 }
 
 // ══════════════════════════════════════════════════
