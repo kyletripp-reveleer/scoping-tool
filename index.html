@@ -1030,58 +1030,63 @@ const SP_SET_URL = 'https://default044b1e3171a44846afc99671d32d99.6f.environment
 
 const store = {
   _spOk: false,
+
+  // READ: localStorage always (instant). SharePoint only used for initial sync on page load.
   async get(key){
     if(inClaude){
       try{ const r=await window.storage.get(key,true); return r?.value??null; }catch(e){ return null; }
     }
-    // Always read from SharePoint (source of truth for multi-user sync)
-    // Fall back to localStorage if SharePoint is unreachable
-    try{
-      const r = await fetch(SP_GET_URL, {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({key: key})
-      });
-      if(r.ok){
-        const d = await r.json();
-        if(d && d.value !== null && d.value !== undefined){
-          localStorage.setItem(key, d.value); // keep local copy in sync
-          return d.value;
-        }
-        return null; // key exists in SP but no value
-      }
-    }catch(e){ console.warn('[store.get SP failed, using localStorage]', e); }
-    return localStorage.getItem(key); // fallback
+    return localStorage.getItem(key);
   },
+
+  // WRITE: localStorage immediately + SharePoint in background (fire and forget)
   async set(key,val){
     if(inClaude){ await window.storage.set(key,val,true); return; }
-    localStorage.setItem(key, val); // write locally immediately as backup
-    try{
-      const r = await fetch(SP_SET_URL, {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({key: key, value: val})
-      });
+    localStorage.setItem(key, val);
+    fetch(SP_SET_URL, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({key:key, value:val})
+    }).then(function(r){
       store._spOk = r.ok;
-      if(!r.ok) console.warn('[store.set SP HTTP error]', r.status, await r.text().catch(()=>''));
-    }catch(e){
-      store._spOk = false;
-      console.warn('[store.set SP failed]', e);
-    }
+      if(!r.ok) r.text().then(function(t){ console.warn('[SP set error]', r.status, t); });
+    }).catch(function(e){ store._spOk=false; console.warn('[SP set failed]',e); });
   },
+
   async del(key){
     if(inClaude){ try{ await window.storage.delete(key,true); }catch(e){} return; }
     localStorage.removeItem(key);
-    try{
-      await fetch(SP_SET_URL, {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({key: key, value: ''})
-      });
-    }catch(e){}
+    fetch(SP_SET_URL, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({key:key, value:''})
+    }).catch(function(e){ console.warn('[SP del failed]',e); });
+  },
+
+  // Pull all keys from SharePoint into localStorage on page load
+  // This is the ONLY time we read from SharePoint
+  async syncFromSharePoint(keys){
+    var synced = 0;
+    for(var i=0; i<keys.length; i++){
+      try{
+        var r = await fetch(SP_GET_URL, {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({key:keys[i]})
+        });
+        if(r.ok){
+          var d = await r.json();
+          if(d && d.value !== null && d.value !== undefined && d.value !== ''){
+            localStorage.setItem(keys[i], d.value);
+            synced++;
+          }
+        }
+      }catch(e){ console.warn('[SP sync failed for key]', keys[i], e); }
+    }
+    store._spOk = true;
+    return synced;
   }
 };
-
 function setSync(s,l){
   const p=document.getElementById('syncPill');
   p.className='sync-pill '+s;
@@ -1306,19 +1311,38 @@ function restoreCard(cid){ delete gstruct.hiddenCards[cid]; saveGStruct(); updat
 function restoreField(fid){ delete gstruct.hiddenFields[fid]; saveGStruct(); updateHiddenBtn(); Object.keys(cards).forEach(function(cid){if((cards[cid]&&cards[cid].fields||[]).some(function(f){return f.id===fid;}))refreshCard(cid);}); renderHiddenModal(); toast('Field restored'); }
 
 async function init(){
-  setSync('sy','Loading…');
+  setSync('sy','Syncing from SharePoint…');
+  // First load whatever is in localStorage so form is usable immediately
   await loadVerIndex();
   await loadGStruct();
-  // Test SharePoint connection BEFORE loading data so sync label is correct
-  try{
-    var testR = await fetch(SP_GET_URL, {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({key:'ci-sp-test'})
-    });
-    store._spOk = testR.ok;
-  }catch(e){ store._spOk = false; }
   await loadData();
+  buildVerSelect();
+  buildNav(); buildSections(); updProg();
+  Object.keys(cards).forEach(cid=>{ attachBranchListeners(cid); evalBranching(cid); });
+  migrateValFromDom();
+  updateHiddenBtn();
+
+  // Now sync from SharePoint in background — pull all known keys
+  var keysToSync = [VER_INDEX_KEY, GLOBAL_STRUCT_KEY];
+  verIndex.forEach(function(v){ keysToSync.push(verStorageKey(v.id)); keysToSync.push('ci-pipe-'+v.id); });
+  keysToSync.push('ci-pipe-global');
+  try{
+    setSync('sy','Syncing from SharePoint…');
+    var synced = await store.syncFromSharePoint(keysToSync);
+    // Reload everything from the freshly synced localStorage
+    await loadVerIndex();
+    await loadGStruct();
+    await loadData();
+    setSync('ok', synced > 0 ? 'Synced · SharePoint' : 'Saved locally');
+  }catch(e){
+    console.warn('[SP sync failed]', e);
+    setSync('ok','Saved locally');
+  }
+  buildVerSelect();
+  buildSections(); buildNav(); updProg();
+  Object.keys(cards).forEach(cid=>{ attachBranchListeners(cid); evalBranching(cid); });
+  migrateValFromDom();
+  updateHiddenBtn();
   document.getElementById('ldr').classList.add('off');
   buildVerSelect();
   buildNav(); buildSections(); updProg();
