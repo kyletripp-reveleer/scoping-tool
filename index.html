@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -631,10 +632,8 @@ const VER_INDEX_KEY = 'ci-ver-index'; // stores [{id,name,created}]
 // ── SharePoint / Power Automate storage URLs ──────────────────────────────
 // After creating your two flows, paste their HTTP trigger URLs here.
 // Leave as-is to use localStorage (local/offline mode).
-const SP_GET_URL = 'https://default044b1e3171a44846afc99671d32d99.6f.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/ad99f7e5d3f845efa22430b05dc9c615/triggers/manual/paths/invoke?api-version=1
-';
-const SP_SET_URL = 'https://default044b1e3171a44846afc99671d32d99.6f.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/391d343d02ef4d888983f9c351320192/triggers/manual/paths/invoke?api-version=1
-';
+const SP_GET_URL = 'PASTE_YOUR_GET_FLOW_URL_HERE';
+const SP_SET_URL = 'PASTE_YOUR_SET_FLOW_URL_HERE';
 // ─────────────────────────────────────────────────────────────────────────
 
 // ══════════════════════════════════════════════════
@@ -1110,9 +1109,10 @@ async function saveVerIndex(){
 async function loadData(){
   try{
     const val=await store.get(verStorageKey(curVerId));
-    if(val){
-      const saved=JSON.parse(val);
-      // Restore section/phase definitions
+    const saved = val ? JSON.parse(val) : null;
+
+    // Restore saved section/phase definitions if present
+    if(saved){
       if(Array.isArray(saved.sdefs) && saved.sdefs.length) SDEFS = saved.sdefs;
       if(Array.isArray(saved.secCards) && saved.secCards.length){
         SEC_CARDS.length = 0;
@@ -1132,38 +1132,36 @@ async function loadData(){
           SEC_CARDS.forEach(arr=>{const i=arr.indexOf(cid);if(i>-1)arr.splice(i,1);});
         });
       }
-      // ── Fill in any cards absent from this save with fresh defaults ──
-      // Cards IN saved.cards → fields are 100% authoritative (deletions respected)
-      // Cards NOT in saved.cards → user never touched them, use defaultCards() as-is
-      const defaults = defaultCards();
-      const cidSectionHint = {
-        'c0-org':'Customer Profile',
-        'c1-platform':'Platform Configuration','c1-lob':'Platform Configuration','c1-risk':'Platform Configuration','c1-core':'Platform Configuration',
-        'c2-workflows':'Workflow Configuration','c2-poc':'Workflow Configuration',
-        'c3-native':'POC Integration','c3-uni':'POC Integration',
-        'c4-data':'Data Sources',
-        'c5-coding':'Coding Services','c5-notes':'Coding Services',
-      };
-      const defaultSecCards = [['c0-org'],['c1-platform','c1-lob','c1-risk'],['c2-workflows','c2-poc','c3-native','c3-uni'],[],['c4-data'],['c5-coding','c5-notes'],['c1-core'],[]];
-      Object.keys(defaults).forEach(cid => {
-        if (!cards[cid]) {
-          // Card was never saved — user never visited it. Use fresh defaults.
-          cards[cid] = JSON.parse(JSON.stringify(defaults[cid]));
-        }
-        // If card IS in cards (restored from save above) — do NOT touch its fields.
-        // The saved fields array is the complete truth. No injection ever.
-
-        // Add to SEC_CARDS if not already placed
-        const alreadyPlaced = SEC_CARDS.some(arr => arr.includes(cid));
-        if (!alreadyPlaced) {
-          const hint = cidSectionHint[cid] || '';
-          let targetSi = -1;
-          if (hint) targetSi = SDEFS.findIndex(s => s.ttl.toLowerCase().includes(hint.toLowerCase().split(' ')[0]));
-          if (targetSi === -1) defaultSecCards.forEach((arr, si) => { if (arr.includes(cid) && si < SEC_CARDS.length) targetSi = si; });
-          if (targetSi >= 0 && SEC_CARDS[targetSi]) SEC_CARDS[targetSi].push(cid);
-        }
-      });
     }
+
+    // ── Always fill in any cards absent from save with fresh defaults ──
+    // This runs whether or not there was saved data, so cards is never empty.
+    // Cards present in save → fields are authoritative, never overwritten.
+    // Cards absent from save → user never visited, use fresh defaults.
+    const defaults = defaultCards();
+    const cidSectionHint = {
+      'c0-org':'Customer Profile',
+      'c1-platform':'Platform Configuration','c1-lob':'Platform Configuration','c1-risk':'Platform Configuration','c1-core':'Platform Configuration',
+      'c2-workflows':'Workflow Configuration','c2-poc':'Workflow Configuration',
+      'c3-native':'POC Integration','c3-uni':'POC Integration',
+      'c4-data':'Data Sources',
+      'c5-coding':'Coding Services','c5-notes':'Coding Services',
+    };
+    const defaultSecCards = [['c0-org'],['c1-platform','c1-lob','c1-risk'],['c2-workflows','c2-poc','c3-native','c3-uni'],[],['c4-data'],['c5-coding','c5-notes'],['c1-core'],[]];
+    Object.keys(defaults).forEach(cid => {
+      if (!cards[cid]) {
+        cards[cid] = JSON.parse(JSON.stringify(defaults[cid]));
+      }
+      const alreadyPlaced = SEC_CARDS.some(arr => arr.includes(cid));
+      if (!alreadyPlaced) {
+        const hint = cidSectionHint[cid] || '';
+        let targetSi = -1;
+        if (hint) targetSi = SDEFS.findIndex(s => s.ttl.toLowerCase().includes(hint.toLowerCase().split(' ')[0]));
+        if (targetSi === -1) defaultSecCards.forEach((arr, si) => { if (arr.includes(cid) && si < SEC_CARDS.length) targetSi = si; });
+        if (targetSi >= 0 && SEC_CARDS[targetSi]) SEC_CARDS[targetSi].push(cid);
+      }
+    });
+
     setSync('ok', inClaude ? 'Synced' : inSharePoint ? 'Saved to SharePoint' : 'Saved locally');
   }catch(e){ setSync('ok','Ready'); }
 }
