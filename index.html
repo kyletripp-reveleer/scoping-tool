@@ -459,6 +459,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
     <div class="ver-actions">
       <button class="btn btn-gh btn-sm" onclick="openVerModal()">⊕ New Customer</button>
       <button class="btn btn-gh btn-sm" onclick="auth(()=>openManageModal())">⚙ Manage</button>
+    <button class="btn btn-gh btn-sm" onclick="auth(()=>openSpModal())" id="spBtn">☁️ SharePoint</button>
     <button class="btn btn-gh btn-sm" onclick="auth(()=>openHiddenModal())" id="hiddenBtn" style="display:none">👁 Hidden Items</button>
       <button class="btn btn-pri btn-sm" onclick="exportVersion()">↓ Export Copy</button>
     </div>
@@ -620,6 +621,31 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 </div>
 
 <!-- TOAST -->
+<!-- SHAREPOINT SETTINGS MODAL -->
+<div class="ov" id="spOv">
+  <div class="ov-bg" onclick="closeSpModal()"></div>
+  <div class="ov-box" style="width:560px;max-width:95vw">
+    <div class="fm-hdr">
+      <div>
+        <h3>☁️ SharePoint Connection</h3>
+        <p>Paste your Power Automate flow URLs to enable shared storage.</p>
+      </div>
+      <button class="fm-x" onclick="closeSpModal()">✕</button>
+    </div>
+    <div class="fm-body">
+      <div class="ml">GET Flow URL <span style="font-size:9px;opacity:.6">(reads data from SharePoint)</span></div>
+      <input type="text" id="spGetInp" placeholder="https://prod-xx.westus.logic.azure.com/workflows/..." style="width:100%;margin-bottom:12px">
+      <div class="ml">SET Flow URL <span style="font-size:9px;opacity:.6">(writes data to SharePoint)</span></div>
+      <input type="text" id="spSetInp" placeholder="https://prod-xx.westus.logic.azure.com/workflows/..." style="width:100%;margin-bottom:12px">
+      <div id="spStatus" style="font-size:11px;color:var(--mu);margin-top:4px"></div>
+    </div>
+    <div class="fm-ftr">
+      <button class="btn btn-gh" onclick="clearSpConfig()">Clear / Disconnect</button>
+      <button class="btn btn-pri" onclick="saveSpConfig()">Save & Connect</button>
+    </div>
+  </div>
+</div>
+
 <!-- HIDDEN ITEMS MODAL -->
 <div class="ov" id="hiddenOv">
   <div class="ov-bg" onclick="closeHiddenModal()"></div>
@@ -642,12 +668,15 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 const PW = '522522';
 const SK = 'ci-v5';
 const VER_INDEX_KEY = 'ci-ver-index'; // stores [{id,name,created}]
+const HIDDEN_KEY = 'ci-hidden-global'; // global hidden flags (all customers)
 
 // ── SharePoint / Power Automate storage URLs ──────────────────────────────
-// After creating your two flows, paste their HTTP trigger URLs here.
-// Leave as-is to use localStorage (local/offline mode).
-const SP_GET_URL = 'PASTE_YOUR_GET_FLOW_URL_HERE';
-const SP_SET_URL = 'PASTE_YOUR_SET_FLOW_URL_HERE';
+// These are loaded dynamically from localStorage key 'ci-sp-config'
+// so they can be set via the Settings UI without editing this file.
+let SP_GET_URL = localStorage.getItem('ci-sp-get') || 'https://default044b1e3171a44846afc99671d32d99.6f.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/ad99f7e5d3f845efa22430b05dc9c615/triggers/manual/paths/invoke?api-version=1
+';
+let SP_SET_URL = localStorage.getItem('ci-sp-set') || 'https://default044b1e3171a44846afc99671d32d99.6f.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/391d343d02ef4d888983f9c351320192/triggers/manual/paths/invoke?api-version=1
+';
 // ─────────────────────────────────────────────────────────────────────────
 
 // ══════════════════════════════════════════════════
@@ -668,6 +697,22 @@ async function loadVerIndex(){
 
 async function saveVerIndex(){
   try{ await store.set(VER_INDEX_KEY,JSON.stringify(verIndex)); }catch(e){}
+}
+
+async function loadHidden(){
+  try{
+    const raw = await store.get(HIDDEN_KEY);
+    if(raw){
+      const h = JSON.parse(raw);
+      hidden.fields   = h.fields   || {};
+      hidden.cards    = h.cards    || {};
+      hidden.sections = h.sections || {};
+    }
+  }catch(e){}
+}
+
+async function saveHidden(){
+  try{ await store.set(HIDDEN_KEY, JSON.stringify(hidden)); }catch(e){}
 }
 
 function buildVerSelect(){
@@ -1044,15 +1089,17 @@ function closePin(){ document.getElementById('pinOv').classList.remove('on'); pe
 //  In browser: uses localStorage (persists locally).
 // ══════════════════════════════════════════════════
 const inClaude = typeof window.storage !== 'undefined' && typeof window.storage.get === 'function';
-const inSharePoint = !inClaude &&
-  typeof SP_GET_URL !== 'undefined' && SP_GET_URL !== 'PASTE_YOUR_GET_FLOW_URL_HERE' &&
-  typeof SP_SET_URL !== 'undefined' && SP_SET_URL !== 'PASTE_YOUR_SET_FLOW_URL_HERE';
+function inSharePoint(){
+  return !inClaude &&
+    SP_GET_URL && SP_GET_URL !== 'PASTE_YOUR_GET_FLOW_URL_HERE' &&
+    SP_SET_URL && SP_SET_URL !== 'PASTE_YOUR_SET_FLOW_URL_HERE';
+}
 
 const store = {
   async get(key){
     if(inClaude){
       try{ const r=await window.storage.get(key,true); return r?.value??null; }catch(e){ return null; }
-    } else if(inSharePoint){
+    } else if(inSharePoint()){
       try{
         const r = await fetch(SP_GET_URL, {
           method: 'POST',
@@ -1070,7 +1117,7 @@ const store = {
   async set(key,val){
     if(inClaude){
       await window.storage.set(key,val,true);
-    } else if(inSharePoint){
+    } else if(inSharePoint()){
       try{
         await fetch(SP_SET_URL, {
           method: 'POST',
@@ -1086,7 +1133,7 @@ const store = {
   async del(key){
     if(inClaude){
       try{ await window.storage.delete(key,true); }catch(e){}
-    } else if(inSharePoint){
+    } else if(inSharePoint()){
       try{
         await fetch(SP_SET_URL, {
           method: 'POST',
@@ -1123,8 +1170,6 @@ async function loadData(){
   try{
     // Always build cards fresh from defaultCards() — structure is never saved.
     cards = JSON.parse(JSON.stringify(defaultCards()));
-    hidden = { fields:{}, cards:{}, sections:{} };
-
     // Restore section layout if customized
     const raw = await store.get(verStorageKey(curVerId));
     const saved = raw ? JSON.parse(raw) : null;
@@ -1134,13 +1179,6 @@ async function loadData(){
       if(Array.isArray(saved.secCards) && saved.secCards.length){
         SEC_CARDS.length = 0;
         saved.secCards.forEach(arr => SEC_CARDS.push(arr));
-      }
-
-      // Restore hidden flags
-      if(saved.hidden){
-        hidden.fields   = saved.hidden.fields   || {};
-        hidden.cards    = saved.hidden.cards     || {};
-        hidden.sections = saved.hidden.sections  || {};
       }
 
       // Pour saved answers onto fields by matching field ID.
@@ -1162,7 +1200,7 @@ async function loadData(){
       });
     }
 
-    setSync('ok', inClaude ? 'Synced' : inSharePoint ? 'Saved to SharePoint' : 'Saved locally');
+    setSync('ok', inClaude ? 'Synced' : inSharePoint() ? 'Saved to SharePoint' : 'Saved locally');
   }catch(e){ console.error('[loadData]', e); setSync('ok','Ready'); }
 }
 
@@ -1181,11 +1219,10 @@ async function saveData(){
     });
     await store.set(verStorageKey(curVerId), JSON.stringify({
       vals,
-      hidden,
       sdefs:    SDEFS,
       secCards: SEC_CARDS,
     }));
-    setSync('ok', inClaude ? 'Saved · shared' : inSharePoint ? 'Saved to SharePoint' : 'Saved locally');
+    setSync('ok', inClaude ? 'Saved · shared' : inSharePoint() ? 'Saved to SharePoint' : 'Saved locally');
     setTimeout(()=>setSync('ok', inClaude ? 'Synced' : inSharePoint ? 'SharePoint ✓' : 'Saved locally'),2200);
   }catch(e){ setSync('er','Save failed'); toast('Could not save','⚠️'); }
 }
@@ -1271,6 +1308,7 @@ async function init(){
   try{
     setSync('sy','Loading…');
     await loadVerIndex();
+    await loadHidden();
     await loadData();
   } catch(e){ console.error('[init] load error:', e); }
 
@@ -1291,7 +1329,8 @@ async function init(){
   try{ hookPipelineLiveUpdates(); } catch(e){ console.error('[init] pipeHook:', e); }
 
   updateHiddenBtn();
-  setSync('ok', inClaude ? 'Synced' : inSharePoint ? 'Saved to SharePoint' : 'Saved locally');
+  updateSpBtn();
+  setSync('ok', inClaude ? 'Synced' : inSharePoint() ? 'Saved to SharePoint' : 'Saved locally');
 }
 
 // ══════════════════════════════════════════════════
@@ -1427,7 +1466,7 @@ function deleteSection(idx){
   if(!confirm('Hide the "' + s.ttl + '" phase? You can restore it from the Hidden Items menu.')) return;
   hidden.sections[s.id] = true;
   if(curStep >= SDEFS.length - 1) curStep = 0;
-  updateHiddenBtn(); rebuildAll(); saveData(); toast('Phase hidden — restore anytime via Hidden Items','👁️');
+  updateHiddenBtn(); rebuildAll(); saveHidden(); toast('Phase hidden — restore anytime via Hidden Items','👁️');
 }
 
 function rebuildAll(){
@@ -1498,7 +1537,7 @@ function deleteCard(cid){
   const c=cards[cid]; if(!c) return;
   if(!confirm('Hide the "' + c.title + '" card and all its fields? You can restore it from the Hidden Items menu.')) return;
   hidden.cards[cid] = true;
-  updateHiddenBtn(); rebuildAll(); saveData(); toast('Card hidden — restore anytime via Hidden Items','👁️');
+  updateHiddenBtn(); rebuildAll(); saveHidden(); toast('Card hidden — restore anytime via Hidden Items','👁️');
 }
 
 function renderFields(cid){
@@ -1720,7 +1759,7 @@ function delField(cid,fi){
   cards[cid].fields.forEach(f=>{
     if(f.condFieldId===fid){ f.condFieldId=null; f.condVal=null; }
   });
-  updateHiddenBtn(); refreshCard(cid); saveData(); toast('Field hidden — restore anytime via Hidden Items','👁️');
+  updateHiddenBtn(); refreshCard(cid); saveHidden(); toast('Field hidden — restore anytime via Hidden Items','👁️');
 }
 
 // ══════════════════════════════════════════════════
@@ -3077,8 +3116,89 @@ function hookPipelineLiveUpdates() {
 
 
 // ══════════════════════════════════════════════════
+//  SHAREPOINT SETTINGS
+// ══════════════════════════════════════════════════
+function openSpModal(){
+  document.getElementById('spGetInp').value = SP_GET_URL !== 'PASTE_YOUR_GET_FLOW_URL_HERE' ? SP_GET_URL : '';
+  document.getElementById('spSetInp').value = SP_SET_URL !== 'PASTE_YOUR_SET_FLOW_URL_HERE' ? SP_SET_URL : '';
+  const connected = inSharePoint();
+  document.getElementById('spStatus').textContent = connected
+    ? '✓ Currently connected to SharePoint'
+    : 'Not connected — using local browser storage';
+  document.getElementById('spStatus').style.color = connected ? 'var(--gn)' : 'var(--mu)';
+  document.getElementById('spOv').classList.add('on');
+}
+function closeSpModal(){ document.getElementById('spOv').classList.remove('on'); }
+
+async function saveSpConfig(){
+  const get = document.getElementById('spGetInp').value.trim();
+  const set = document.getElementById('spSetInp').value.trim();
+  if(!get || !set){
+    document.getElementById('spStatus').textContent = '⚠ Both URLs are required.';
+    document.getElementById('spStatus').style.color = 'var(--rd)';
+    return;
+  }
+  SP_GET_URL = get;
+  SP_SET_URL = set;
+  localStorage.setItem('ci-sp-get', get);
+  localStorage.setItem('ci-sp-set', set);
+  document.getElementById('spStatus').textContent = '✓ Connected! Testing connection…';
+  document.getElementById('spStatus').style.color = 'var(--gn)';
+  // Test the connection with a get
+  try{
+    const r = await fetch(SP_GET_URL, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({action:'get', key:'ci-sp-test'})
+    });
+    if(r.ok){
+      document.getElementById('spStatus').textContent = '✓ Connection successful! Saving data to SharePoint.';
+      toast('SharePoint connected ✓','☁️');
+      // Re-save current data to SharePoint now that it's connected
+      await saveData();
+      await saveHidden();
+      await saveVerIndex();
+      setSync('ok', 'Saved to SharePoint');
+    } else {
+      throw new Error('HTTP ' + r.status);
+    }
+  } catch(e){
+    document.getElementById('spStatus').textContent = '⚠ Connection failed: ' + e.message + '. Check your flow URL.';
+    document.getElementById('spStatus').style.color = 'var(--rd)';
+  }
+}
+
+function clearSpConfig(){
+  if(!confirm('Disconnect from SharePoint? Data will be saved locally only.')) return;
+  SP_GET_URL = 'PASTE_YOUR_GET_FLOW_URL_HERE';
+  SP_SET_URL = 'PASTE_YOUR_SET_FLOW_URL_HERE';
+  localStorage.removeItem('ci-sp-get');
+  localStorage.removeItem('ci-sp-set');
+  document.getElementById('spGetInp').value = '';
+  document.getElementById('spSetInp').value = '';
+  document.getElementById('spStatus').textContent = 'Disconnected — using local storage.';
+  document.getElementById('spStatus').style.color = 'var(--mu)';
+  setSync('ok','Saved locally');
+  toast('SharePoint disconnected','☁️');
+}
+
+// ══════════════════════════════════════════════════
 //  HIDDEN ITEMS MANAGER
 // ══════════════════════════════════════════════════
+
+function updateSpBtn(){
+  const btn = document.getElementById('spBtn');
+  if(!btn) return;
+  if(inSharePoint()){
+    btn.textContent = '☁️ SharePoint ✓';
+    btn.style.color = 'var(--gn)';
+    btn.style.borderColor = 'rgba(22,163,74,.4)';
+  } else {
+    btn.textContent = '☁️ SharePoint';
+    btn.style.color = '';
+    btn.style.borderColor = '';
+  }
+}
 
 function updateHiddenBtn(){
   const anyHidden = Object.keys(hidden.fields).length > 0 ||
@@ -3149,7 +3269,7 @@ function renderHiddenModal(){
 function restoreSection(sid){
   delete hidden.sections[sid];
   updateHiddenBtn();
-  rebuildAll(); saveData();
+  rebuildAll(); saveHidden();
   renderHiddenModal();
   toast('Phase restored','↩');
 }
@@ -3157,7 +3277,7 @@ function restoreSection(sid){
 function restoreCard(cid){
   delete hidden.cards[cid];
   updateHiddenBtn();
-  rebuildAll(); saveData();
+  rebuildAll(); saveHidden();
   renderHiddenModal();
   toast('Card restored','↩');
 }
@@ -3171,7 +3291,7 @@ function restoreField(fid){
     }
   });
   updateHiddenBtn();
-  saveData();
+  saveHidden();
   renderHiddenModal();
   toast('Field restored','↩');
 }
