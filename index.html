@@ -1024,27 +1024,62 @@ function closePin(){ document.getElementById('pinOv').classList.remove('on'); pe
 // ══════════════════════════════════════════════════
 const inClaude = typeof window.storage !== 'undefined' && typeof window.storage.get === 'function';
 
+// ── SharePoint via Power Automate ──────────────────
+const SP_GET_URL = 'https://default044b1e3171a44846afc99671d32d99.6f.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/ad99f7e5d3f845efa22430b05dc9c615/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=OwO8ZIcdV_E_Z8qI72QF1Td2zmcZsZ0xtVp4Q85Rygs';
+const SP_SET_URL = 'https://default044b1e3171a44846afc99671d32d99.6f.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/391d343d02ef4d888983f9c351320192/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=SkqQzyeHPdR5LKwkwia-Bmm7Qmqii9xOhtfK1KcHtto';
+
 const store = {
+  _spOk: false,
   async get(key){
     if(inClaude){
       try{ const r=await window.storage.get(key,true); return r?.value??null; }catch(e){ return null; }
-    } else {
-      return localStorage.getItem(key);
     }
+    try{
+      const r = await fetch(SP_GET_URL, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({key: key})
+      });
+      if(r.ok){
+        const d = await r.json();
+        if(d && d.value !== null && d.value !== undefined){
+          localStorage.setItem(key, d.value);
+          return d.value;
+        }
+      }
+    }catch(e){ console.warn('[store.get SP failed, using localStorage]', e); }
+    return localStorage.getItem(key);
   },
   async set(key,val){
-    if(inClaude){
-      await window.storage.set(key,val,true);
-    } else {
-      localStorage.setItem(key,val);
+    if(inClaude){ await window.storage.set(key,val,true); return; }
+    localStorage.setItem(key, val);
+    try{
+      const r = await fetch(SP_SET_URL, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({key: key, value: val})
+      });
+      if(r.ok){
+        store._spOk = true;
+      } else {
+        store._spOk = false;
+        console.warn('[store.set SP HTTP error]', r.status, await r.text().catch(()=>''));
+      }
+    }catch(e){
+      store._spOk = false;
+      console.warn('[store.set SP failed]', e);
     }
   },
   async del(key){
-    if(inClaude){
-      try{ await window.storage.delete(key,true); }catch(e){}
-    } else {
-      localStorage.removeItem(key);
-    }
+    if(inClaude){ try{ await window.storage.delete(key,true); }catch(e){} return; }
+    localStorage.removeItem(key);
+    try{
+      await fetch(SP_SET_URL, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({key: key, value: ''})
+      });
+    }catch(e){}
   }
 };
 
@@ -1077,7 +1112,7 @@ async function loadData(){
         });
       });
     }
-    setSync('ok','Saved locally');
+    setSync('ok', store._spOk ? 'Saved · SharePoint' : 'Saved locally');
   }catch(e){ console.error('[loadData]',e); setSync('ok','Ready'); }
 }
 
@@ -1092,8 +1127,9 @@ async function saveData(){
       });
     });
     await store.set(verStorageKey(curVerId),JSON.stringify({vals:vals}));
-    setSync('ok','Saved locally');
-    setTimeout(function(){setSync('ok','Saved locally');},2200);
+    var lbl = store._spOk ? 'Saved · SharePoint' : 'Saved locally';
+    setSync('ok', lbl);
+    setTimeout(function(){ setSync('ok', store._spOk ? 'Saved · SharePoint' : 'Saved locally'); },2200);
   }catch(e){ setSync('er','Save failed'); toast('Could not save'); }
 }
 
@@ -1284,6 +1320,25 @@ async function init(){
   await loadPipeGlobal();
   await loadPipeData();
   hookPipelineLiveUpdates();
+  // Test SharePoint connection on load
+  try{
+    var testR = await fetch(SP_GET_URL, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({key:'ci-sp-test'})
+    });
+    if(testR.ok){
+      store._spOk = true;
+      setSync('ok','Connected to SharePoint');
+      setTimeout(function(){setSync('ok','Saved · SharePoint');},2000);
+    } else {
+      console.warn('[SP test failed]', testR.status);
+      setSync('ok','Saved locally (SP error '+testR.status+')');
+    }
+  }catch(e){
+    console.warn('[SP test error]', e);
+    setSync('ok','Saved locally (SP unreachable)');
+  }
 }
 
 // ══════════════════════════════════════════════════
