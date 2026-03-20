@@ -2068,6 +2068,8 @@ function buildProfile() {
           displayVal = `<span class="profile-a-badge yes">Yes</span>`;
         } else if (val.toLowerCase() === 'no') {
           displayVal = `<span class="profile-a-badge no">No</span>`;
+        } else if (f.type === 'textarea') {
+          displayVal = `<span class="profile-a" style="white-space:pre-wrap">${esc(val)}</span>`;
         } else {
           displayVal = `<span class="profile-a">${esc(val)}</span>`;
         }
