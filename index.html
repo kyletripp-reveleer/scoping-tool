@@ -2366,10 +2366,21 @@ async function submit(){
   signatureDataUrl=sig;
   document.getElementById('subBtn').disabled=true;
   document.getElementById('loader').style.display='block';
+  // Build scoping answers as formatted HTML for the email
+  var answerRows = '';
+  document.querySelectorAll('.wrap table tr').forEach(function(tr){
+    var cells = tr.querySelectorAll('td');
+    if(cells.length===2) answerRows += '<tr><td style="padding:6px 12px;font-size:11px;color:#64748b;width:220px;border-bottom:1px solid #f1f5f9">'+cells[0].textContent+'</td><td style="padding:6px 12px;border-bottom:1px solid #f1f5f9">'+cells[1].innerHTML+'</td></tr>';
+  });
+  var scopingHtml = answerRows ? '<table style="width:100%;border-collapse:collapse;font-family:sans-serif">'+answerRows+'</table>' : '(No answers found)';
+
   const payload={
     action:'signed', requestId:REQUEST_ID,
+    orgName: ORG_NAME,
+    recipientName: document.getElementById('sName').value||name,
     signerName:name, signerTitle:title,
-    signatureData:sig, signedAt:new Date().toISOString()
+    signatureData:sig, signedAt:new Date().toISOString(),
+    scopingData: scopingHtml
   };
   let sent=false;
   if(PA_URL && PA_URL!=='PASTE_YOUR_POWER_AUTOMATE_HTTP_URL_HERE'){
