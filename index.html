@@ -2138,7 +2138,11 @@ function buildProfile() {
 //         • "Send an email (V2)" to yourself with signature notification
 //  5. Copy the HTTP POST URL from the trigger and paste it below:
 
-const POWER_AUTOMATE_URL = 'PASTE_YOUR_POWER_AUTOMATE_HTTP_URL_HERE';
+// ── Signature Power Automate flows ──────────────────
+const SP_SERVE_URL   = 'https://default044b1e3171a44846afc99671d32d99.6f.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/080010d3762147248231e50d0e7dc412/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=PowzU9QHLfxDz6omb07kgbbgpZU9_SbF3-UQcdL5Ghc';
+const SP_SEND_SIG_URL= 'https://default044b1e3171a44846afc99671d32d99.6f.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/eee5abd92b3a4ba7b594dfd8e56aee7f/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=Hjk9HLrnXfh6m-vlMZb46K2aPLLYrVYL_n7X4pUsdqA';
+const SP_REC_SIG_URL = 'https://default044b1e3171a44846afc99671d32d99.6f.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/4d7400c85c684c429a8951b25407467a/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=QnfjSsTjXUyBl7mO6InRbFlBGal1j-sUhBArItO8dEU';
+const POWER_AUTOMATE_URL = SP_REC_SIG_URL; // legacy reference
 
 // Per-version signature records stored in localStorage
 // { [verId]: { requestId, recipientName, recipientEmail, sentAt, signedAt, signerName, signerTitle, signatureData, status } }
@@ -2155,9 +2159,7 @@ function saveSigRecords() {
   localStorage.setItem('ci-sig-records', JSON.stringify(sigRecords));
 }
 
-function paSetup() {
-  return POWER_AUTOMATE_URL && POWER_AUTOMATE_URL !== 'PASTE_YOUR_POWER_AUTOMATE_HTTP_URL_HERE';
-}
+function paSetup() { return true; }
 
 // ── Modal open/close ──
 function openSigModal() {
@@ -2216,7 +2218,7 @@ function buildSigningPageHTML(requestId, recipientName, orgName, goLive, section
     '</table></div>'
   ).join('');
 
-  const paUrl = POWER_AUTOMATE_URL.replace(/'/g, "\\'");
+  const paUrl = SP_REC_SIG_URL.replace(/'/g, "\\'");
   const safeOrg = orgName.replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const safeRecip = (recipientName||'there').replace(/</g,'&lt;');
 
@@ -2412,10 +2414,10 @@ async function sendForSignature() {
   if (!email) { document.getElementById('sigRecipEmail').focus(); toast('Enter recipient email','⚠️'); return; }
 
   const btn = document.getElementById('sigSendBtn');
-  btn.textContent = 'Generating…';
+  btn.textContent = 'Saving to SharePoint…';
   btn.disabled = true;
 
-  const ctx    = getScopingContext();
+  const ctx     = getScopingContext();
   const orgName = ctxVal(ctx,'organization name','customer name','org name') || (verIndex.find(v=>v.id===curVerId)||{}).name || 'Customer';
   const goLiveRaw = ctxVal(ctx,'go-live','golive','go live');
   let goLive = '—';
@@ -2427,49 +2429,67 @@ async function sendForSignature() {
   const requestId = 'sig-' + curVerId + '-' + Date.now();
   const snapshot  = buildScopingSnapshot();
 
-  // Save record locally
+  // Build the signing page HTML
+  const pageHtml = buildSigningPageHTML(requestId, name, orgName, goLive, snapshot);
+
+  // Step 1: Save signing page HTML to SharePoint via SET flow
+  try {
+    const saveR = await fetch(SP_SET_URL, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({key: requestId, value: pageHtml})
+    });
+    if (!saveR.ok) throw new Error('SET failed: ' + saveR.status);
+  } catch(e) {
+    console.error('[sendForSignature] Failed to save signing page:', e);
+    toast('Could not save signing page to SharePoint','⚠️');
+    btn.textContent = 'Generate Link & Send';
+    btn.disabled = false;
+    return;
+  }
+
+  // Step 2: Build the permanent signing URL (points to Serve Signing Page flow)
+  const signingUrl = SP_SERVE_URL + '&key=' + encodeURIComponent(requestId);
+
+  // Step 3: Save record locally
   sigRecords[curVerId] = {
     requestId, recipientName: name, recipientEmail: email,
     message: msg, sentAt: new Date().toISOString(),
-    status: 'pending', signedAt: null, signerName: null, signatureData: null
+    signingUrl, status: 'pending',
+    signedAt: null, signerName: null, signatureData: null
   };
   saveSigRecords();
 
-  // Notify Power Automate of new request (if configured)
-  if (paSetup()) {
-    try {
-      await fetch(POWER_AUTOMATE_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'new_request', requestId, orgName,
-          recipientName: name, recipientEmail: email,
-          message: msg, sentAt: sigRecords[curVerId].sentAt,
-          scopingData: JSON.stringify(snapshot)
-        })
-      });
-    } catch(e) { console.warn('PA notification failed:', e); }
+  // Step 4: Send email to customer via Send Signature Request flow
+  btn.textContent = 'Sending email…';
+  try {
+    const emailR = await fetch(SP_SEND_SIG_URL, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        recipientName: name,
+        recipientEmail: email,
+        orgName,
+        signingUrl,
+        message: msg
+      })
+    });
+    if (!emailR.ok) throw new Error('Email failed: ' + emailR.status);
+    btn.textContent = '✅ Email Sent to ' + name;
+    toast('Signing email sent to ' + email + '!', '✍️');
+  } catch(e) {
+    console.warn('[sendForSignature] Email failed:', e);
+    // Still show the link even if email failed
+    btn.textContent = '⚠️ Email failed — copy link manually';
+    toast('Email failed — copy the link manually','⚠️');
   }
 
-  // Build signing page and create blob URL
-  const pageHtml = buildSigningPageHTML(requestId, name, orgName, goLive, snapshot);
-  const blob     = new Blob([pageHtml], { type: 'text/html' });
-  const blobUrl  = URL.createObjectURL(blob);
-  sigRecords[curVerId].blobUrl = blobUrl;
-  saveSigRecords();
-
-  // Show link
+  // Show the permanent link
   document.getElementById('sigLinkResult').style.display = '';
   const box = document.getElementById('sigLinkBox');
-  box.textContent = blobUrl;
-  box.dataset.url = blobUrl;
-  btn.textContent = '✓ Link Ready — Copy & Send';
+  box.textContent = signingUrl;
+  box.dataset.url = signingUrl;
 
-  if (!paSetup()) {
-    box.title = '⚠️ Power Automate not configured — link works but no SharePoint record will be created';
-  }
-
-  toast('Signing page ready — copy link and send to ' + email, '✍️');
   buildProfile();
 }
 
