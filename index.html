@@ -1377,7 +1377,21 @@ async function init(){
 // ══════════════════════════════════════════════════
 function buildNav(){ document.getElementById('snav').innerHTML=SDEFS.map((s,i)=>`<button class="sb ${i===0?'on':''}" id="nb${i}" onclick="goTo(${i})"><span class="sn">${i+1}</span><span class="slbl">${esc(s.ttl.length>10?s.ttl.slice(0,9)+'…':s.ttl)}</span></button>`).join(''); }
 function updProg(){ document.getElementById('prog').style.width=((curStep+1)/SDEFS.length*100)+'%'; }
-function goTo(n){ document.getElementById('nb'+curStep)?.classList.remove('on'); curStep=n; document.querySelectorAll('.sec').forEach((el,i)=>el.classList.toggle('on',i===n)); document.getElementById('nb'+n)?.classList.add('on'); updProg(); window.scrollTo({top:0,behavior:'smooth'}); if(n===SDEFS.length-1)buildSummary(); }
+function goTo(n){
+  // Check if destination section is Core Config — require auth
+  var destSection = SDEFS[n];
+  if(destSection && destSection.id === 'sx-1772836816552' && !authed){
+    auth(function(){ goTo(n); });
+    return;
+  }
+  document.getElementById('nb'+curStep)?.classList.remove('on');
+  curStep=n;
+  document.querySelectorAll('.sec').forEach((el,i)=>el.classList.toggle('on',i===n));
+  document.getElementById('nb'+n)?.classList.add('on');
+  updProg();
+  window.scrollTo({top:0,behavior:'smooth'});
+  if(n===SDEFS.length-1)buildSummary();
+}
 
 // ══════════════════════════════════════════════════
 //  BUILD SECTIONS
