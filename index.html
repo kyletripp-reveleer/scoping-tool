@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1267,6 +1268,14 @@ function applyGStruct(){
     Object.keys(gstruct.cardTitles).forEach(function(cid){
       if(cards[cid]) cards[cid].title=gstruct.cardTitles[cid];
     });
+    Object.keys(gstruct.newCards).forEach(function(cid){
+      if(!cards[cid]){
+        var nc=gstruct.newCards[cid];
+        cards[cid]={title:nc.title,fields:[]};
+        var si=nc.secIdx;
+        if(si!==undefined&&SEC_CARDS[si]&&!SEC_CARDS[si].includes(cid)) SEC_CARDS[si].push(cid);
+      }
+    });
     Object.keys(gstruct.newFields).forEach(function(cid){
       if(!cards[cid]) return;
       var ex=new Set((cards[cid].fields||[]).map(function(f){return f.id;}));
@@ -1283,14 +1292,7 @@ function applyGStruct(){
       (cards[cid].fields||[]).forEach(function(f){if(!order.includes(f.id))ordered.push(f);});
       cards[cid].fields=ordered;
     });
-    Object.keys(gstruct.newCards).forEach(function(cid){
-      if(!cards[cid]){
-        var nc=gstruct.newCards[cid];
-        cards[cid]={title:nc.title,fields:(nc.fields||[]).map(function(f){return JSON.parse(JSON.stringify(f));})};
-        var si=nc.secIdx;
-        if(si!==undefined&&SEC_CARDS[si]&&!SEC_CARDS[si].includes(cid)) SEC_CARDS[si].push(cid);
-      }
-    });
+
     if(gstruct.sdefs&&gstruct.sdefs.length){
       SDEFS.length=0; gstruct.sdefs.forEach(function(s){SDEFS.push(Object.assign({},s));});
     }
