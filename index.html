@@ -404,21 +404,27 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
     </div>
   </div>
 
-  <div class="ver-bar">
-    <span class="ver-label">Customer</span>
-    <select class="ver-select" id="verSelect" onchange="switchVersion(this.value)"></select>
-    <span class="ver-badge" id="verBadge">Default</span>
-    <div class="ver-actions">
-      <select class="ver-select" id="statusSelect" onchange="setCustomerStatus(this.value)" title="Customer Status" style="max-width:160px">
-        <option value="">— Status —</option>
+  <div class="ver-bar" style="flex-direction:column;align-items:stretch;gap:10px">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span class="ver-label">Customer</span>
+      <select class="ver-select" id="verSelect" onchange="switchVersion(this.value)"></select>
+      <span class="ver-badge" id="verBadge">Default</span>
+      <div class="ver-actions">
+        <button class="btn btn-gh btn-sm" onclick="openVerModal()">⊕ New Customer</button>
+        <button class="btn btn-gh btn-sm" id="hiddenBtn" style="display:none" onclick="auth(()=>openHiddenModal())">👁 Hidden Items</button>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;border-top:1px solid var(--bd);padding-top:10px">
+      <span class="ver-label">Status</span>
+      <select class="ver-select" id="statusSelect" onchange="setCustomerStatus(this.value)" title="Customer Status" style="max-width:260px">
+        <option value="">— Select a status —</option>
+        <option value="Prospective">Prospective</option>
         <option value="Customer Review in Progress">Customer Review in Progress</option>
         <option value="Customer Review Complete">Customer Review Complete</option>
         <option value="Product Review Complete">Product Review Complete</option>
         <option value="In Implementation">In Implementation</option>
         <option value="Live">Live</option>
       </select>
-      <button class="btn btn-gh btn-sm" onclick="openVerModal()">⊕ New Customer</button>
-      <button class="btn btn-gh btn-sm" id="hiddenBtn" style="display:none" onclick="auth(()=>openHiddenModal())">👁 Hidden Items</button>
     </div>
   </div>
   <div class="mode-bar" id="modeBar">
@@ -892,7 +898,7 @@ function defaultCards(){
       {id:'c0org-f3',lbl:'Email',type:'email',ph:'contact@org.com',hint:'',opts:[],builtin:true},
       {id:'c0org-f4',lbl:'Phone',type:'phone',ph:'+1 (555) 000-0000',hint:'',opts:[],builtin:true},
       {id:'c0org-f6',lbl:'Target Go-Live Date',type:'date',ph:'',hint:'',opts:[],builtin:true},
-      {id:'c0org-f7',lbl:'Status',type:'dropdown',ph:'',hint:'',opts:['Customer Review in Progress','Customer Review Complete','Product Review Complete','In Implementation','Live'],builtin:true},
+      {id:'c0org-f7',lbl:'Status',type:'dropdown',ph:'',hint:'',opts:['Prospective','Customer Review in Progress','Customer Review Complete','Product Review Complete','In Implementation','Live'],builtin:true},
     ]},
     'c1-lob': {title:'Lines of Business & Members', fields:[
       {id:'c1lob-f1',lbl:'Active Lines of Business',type:'chips',ph:'',hint:'Select all that apply',opts:['Medicare Advantage (MA)','ACA / Commercial','Medicaid (MCD)'],builtin:true},
@@ -2174,7 +2180,7 @@ function getSectionName(cid){
   return '';
 }
 
-function authAudit(){ auth(openAuditModal); }
+function authAudit(){ openAuditModal(); }
 
 function openAuditModal(){
   const custName = (verIndex.find(v=>v.id===curVerId)||{}).name || 'Customer';
