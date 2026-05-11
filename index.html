@@ -72,7 +72,6 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .sec{display:none}
 .sec.on{display:block;animation:_si .35s ease both}
 @keyframes _si{from{opacity:0;transform:translateX(10px)}to{opacity:1;transform:translateX(0)}}
-/* SECTION HEADER EDIT CONTROLS */
 .sec-h{display:flex;align-items:center;gap:14px;margin-bottom:24px}
 .sec-h-info{flex:1;min-width:0}
 .sec-h-acts{display:flex;gap:6px;flex-shrink:0}
@@ -81,8 +80,6 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .sec-h-act.danger:hover{border-color:var(--rd);color:var(--rd);background:var(--rdd)}
 .sec-h-act.add-sec{border-style:dashed;margin-left:4px}
 .sec-h-act.add-sec:hover{border-color:var(--bl);color:var(--bl);background:var(--bld)}
-
-/* SECTION EDITOR MODAL */
 .sec-modal{width:460px;max-width:95vw}
 .sec-modal .fm-body input[type="text"]{background:var(--s2);border:1px solid var(--bd);border-radius:6px;padding:9px 11px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--tx);outline:none;width:100%;transition:border-color .2s;margin-bottom:2px}
 .sec-modal .fm-body input:focus{border-color:var(--bl);box-shadow:0 0 0 3px var(--blg)}
@@ -92,15 +89,11 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .sec-ico{width:38px;height:38px;background:var(--bld);border:1px solid rgba(59,130,246,.2);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
 .sec-ttl{font-family:'Syne',sans-serif;font-size:19px;font-weight:700}
 .sec-sub{font-size:11px;color:var(--mu);margin-top:1px}
-
-/* CARD */
 .card{background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:20px 22px;margin-bottom:14px;box-shadow:var(--sh);transition:border-color .2s}
 .ct{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--bl);margin-bottom:14px;display:flex;align-items:center;gap:8px;font-weight:500}
 .ct-line{flex:1;height:1px;background:var(--bd)}
 .ct-add{background:transparent;border:1px dashed var(--bd);border-radius:5px;padding:3px 10px;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--mu);cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:5px;white-space:nowrap;flex-shrink:0}
 .ct-add:hover{border-color:var(--bl);color:var(--bl);background:var(--bld)}
-
-/* FIELD ROW — every field is a draggable row */
 .fld-list{display:flex;flex-direction:column;gap:10px}
 .fld-row{display:flex;align-items:flex-start;gap:0;background:var(--s2);border:1.5px solid var(--bd);border-radius:8px;overflow:hidden;transition:border-color .2s,opacity .15s}
 .fld-row:focus-within{border-color:var(--bdh)}
@@ -120,8 +113,6 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .fld-inp textarea{resize:vertical;min-height:60px}
 .fld-hint{font-size:10px;color:var(--mu);font-style:italic;margin-top:5px}
 .fld-badge{padding:2px 7px;border-radius:100px;font-size:9px;letter-spacing:.05em;text-transform:uppercase;flex-shrink:0}
-
-/* yn / chips inside fld */
 .yn{display:flex;border-radius:6px;overflow:hidden;border:1px solid var(--bd);width:fit-content}
 .yb{padding:6px 14px;background:transparent;border:none;color:var(--mu);cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:11px;transition:all .2s}
 .yb:first-child{border-right:1px solid var(--bd)}
@@ -131,16 +122,10 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .chip-grp{display:flex;flex-wrap:wrap;gap:6px}
 .chip{padding:5px 12px;background:var(--sf);border:1.5px solid var(--bd);border-radius:100px;font-size:11px;cursor:pointer;transition:all .2s;user-select:none;color:var(--mu)}
 .chip:hover,.chip.on{border-color:var(--bl);color:var(--bl);background:var(--bld);font-weight:500}
-
-/* drag states */
 .fld-row.dragging{opacity:.3;border-style:dashed}
 .fld-row.drop-above{border-top:3px solid var(--bl)}
 .fld-row.drop-below{border-bottom:3px solid var(--bl)}
-
-/* nav */
 .nav-row{display:flex;justify-content:space-between;align-items:center;margin-top:28px;padding-top:20px;border-top:1px solid var(--bd)}
-
-/* summary cards */
 .sg{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:11px;margin-bottom:20px}
 .sc{background:var(--sf);border:1px solid var(--bd);border-radius:8px;padding:14px 16px;box-shadow:var(--sh)}
 .sc .sl{font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--mu);margin-bottom:5px}
@@ -149,8 +134,6 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .rw{display:flex;align-items:center;gap:18px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:18px 22px;margin-bottom:20px;box-shadow:var(--sh)}
 .rw h3{font-family:'Syne',sans-serif;font-size:17px;font-weight:700}
 .rw p{font-size:11px;color:var(--mu);margin-top:3px}
-
-/* PIN MODAL */
 .ov{display:none;position:fixed;inset:0;z-index:500;align-items:center;justify-content:center;backdrop-filter:blur(3px)}
 .ov.on{display:flex}
 .ov-bg{position:absolute;inset:0;background:rgba(30,39,64,.4)}
@@ -167,8 +150,6 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .pin-err{font-size:11px;color:var(--rd);min-height:15px;margin-bottom:14px}
 .pin-btns{display:flex;gap:9px}
 .pin-btns button{flex:1}
-
-/* FIELD EDITOR MODAL */
 .fld-modal{width:500px;max-width:95vw;max-height:92vh;overflow-y:auto}
 .fm-hdr{padding:18px 20px 14px;border-bottom:1px solid var(--bd);display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
 .fm-hdr h3{font-family:'Syne',sans-serif;font-size:16px;font-weight:700}
@@ -197,21 +178,15 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .oadd button{padding:9px 14px;background:var(--bl);color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:11px;transition:background .2s}
 .oadd button:hover{background:#2563eb}
 .fm-ftr{padding:14px 20px;border-top:1px solid var(--bd);display:flex;gap:10px;justify-content:flex-end}
-
-/* TOAST */
 .toast{position:fixed;bottom:24px;right:24px;background:var(--sf);border:1px solid var(--bd);border-radius:8px;padding:11px 18px 11px 22px;font-size:12px;color:var(--bl);box-shadow:var(--sh2);transform:translateY(70px);opacity:0;transition:all .3s cubic-bezier(.34,1.56,.64,1);z-index:900;pointer-events:none;display:flex;align-items:center;gap:9px}
 .toast.on{transform:translateY(0);opacity:1}
 .toast-bar{width:3px;position:absolute;left:0;top:0;bottom:0;background:var(--bl);border-radius:8px 0 0 8px}
-
-/* VERSION BAR */
 .ver-bar{display:flex;align-items:center;gap:10px;background:var(--sf);border:1px solid var(--bd);border-radius:8px;padding:8px 14px;margin-bottom:18px;box-shadow:var(--sh);flex-wrap:wrap}
 .ver-label{font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--mu);font-weight:500;white-space:nowrap}
 .ver-select{background:var(--s2);border:1px solid var(--bd);border-radius:6px;padding:6px 10px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--tx);outline:none;cursor:pointer;transition:border-color .2s;max-width:220px}
 .ver-select:focus{border-color:var(--bl)}
 .ver-badge{padding:3px 10px;border-radius:100px;font-size:10px;font-weight:500;background:var(--bld);color:var(--bl);border:1px solid rgba(59,130,246,.2);white-space:nowrap}
 .ver-actions{display:flex;gap:7px;margin-left:auto;flex-wrap:wrap}
-
-/* VERSION MODAL */
 .vm-box{width:400px;max-width:95vw;padding:28px 24px}
 .vm-box h3{font-family:'Syne',sans-serif;font-size:17px;font-weight:700;margin-bottom:6px}
 .vm-box p{font-size:11px;color:var(--mu);margin-bottom:20px}
@@ -230,16 +205,12 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .vm-act:hover{border-color:var(--tx);color:var(--tx)}
 .vm-act.del:hover{border-color:var(--rd);color:var(--rd);background:var(--rdd)}
 .vm-act.active-btn{background:var(--bl);color:#fff;border-color:var(--bl)}
-
-/* EMPTY SECTION STATE & ADD CARD */
 .sec-empty{border:2px dashed var(--bd);border-radius:10px;padding:32px 20px;text-align:center;color:var(--mu);margin-bottom:14px}
 .sec-empty p{font-size:12px;margin-bottom:14px}
 .sec-empty-ico{font-size:28px;margin-bottom:8px}
 .add-card-row{display:flex;justify-content:center;margin-bottom:14px}
 .btn-add-card{background:transparent;border:1.5px dashed var(--bl);border-radius:7px;padding:9px 20px;font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--bl);cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:7px}
 .btn-add-card:hover{background:var(--bld);border-style:solid}
-
-/* BRANCHING */
 .fld-row.hidden-by-branch{display:none}
 .branch-badge{display:inline-flex;align-items:center;gap:4px;font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--pu);background:rgba(124,58,237,.08);border:1px solid rgba(124,58,237,.2);border-radius:100px;padding:2px 8px;flex-shrink:0;white-space:nowrap}
 .branch-section{margin-top:16px;padding-top:14px;border-top:1px dashed var(--bd)}
@@ -249,7 +220,6 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .branch-row select:focus{border-color:var(--bl);box-shadow:0 0 0 3px var(--blg)}
 .branch-clear{background:transparent;border:1px dashed var(--bd);border-radius:5px;padding:4px 10px;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--mu);cursor:pointer;margin-top:8px;transition:all .2s}
 .branch-clear:hover{border-color:var(--rd);color:var(--rd);background:var(--rdd)}
-
 @media(max-width:640px){
   .sb .slbl{display:none}
   .qt-grid{grid-template-columns:repeat(3,1fr)}
@@ -260,39 +230,23 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
   .sec{display:block!important}
   .fld-row.hidden-by-branch{display:flex!important}
 }
-
-/* ═══════════════════════════════════════════
-   MODE SWITCHER
-═══════════════════════════════════════════ */
 .mode-bar{display:flex;align-items:center;gap:8px;margin-bottom:24px;background:var(--sf);border:1px solid var(--bd);border-radius:8px;padding:6px;box-shadow:var(--sh)}
 .mode-btn{flex:1;padding:9px 16px;border-radius:5px;border:none;cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--mu);background:transparent;transition:all .2s}
 .mode-btn:hover{background:var(--s2);color:var(--tx)}
 .mode-btn.on{background:var(--bl);color:#fff;box-shadow:0 2px 8px rgba(59,130,246,.3)}
 .mode-live-badge{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.12em;color:var(--gn);background:var(--gnd);border:1px solid rgba(22,163,74,.25);border-radius:20px;padding:4px 10px;white-space:nowrap;animation:_pu 2s ease infinite}
-
-/* ═══════════════════════════════════════════
-   PIPELINE: CUSTOMER BAR
-═══════════════════════════════════════════ */
 .pipe-customer-bar{background:var(--tx);color:#fff;border-radius:10px;padding:16px 22px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;gap:12px}
 .pipe-cust-name{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:#fff}
 .pipe-cust-name span{color:#60a5fa}
 .pipe-cust-meta{display:flex;gap:16px;flex-wrap:wrap}
 .pipe-cust-chip{font-family:'IBM Plex Mono',monospace;font-size:10px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);border-radius:20px;padding:4px 12px;color:#e2e8f0}
 .pipe-cust-chip.empty{opacity:.4;font-style:italic}
-
-/* ═══════════════════════════════════════════
-   PIPELINE: PROGRESS STRIP
-═══════════════════════════════════════════ */
 .pipe-progress-strip{background:var(--sf);border:1px solid var(--bd);border-radius:8px;padding:14px 18px;margin-bottom:18px;display:flex;align-items:center;gap:14px}
 .pipe-prog-label{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--mu);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap}
 .pipe-prog-bar-wrap{flex:1;height:8px;background:var(--s3);border-radius:4px;overflow:hidden}
 .pipe-prog-bar-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,#2563eb,#7c3aed,#059669);transition:width .4s ease}
 .pipe-prog-count{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--mu);white-space:nowrap}
 .pipe-conditional-banner{background:var(--amd);border:1px solid rgba(217,119,6,.25);border-radius:6px;padding:8px 14px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--am);margin-bottom:12px;display:flex;align-items:center;gap:8px}
-
-/* ═══════════════════════════════════════════
-   PIPELINE: PHASE TABS
-═══════════════════════════════════════════ */
 .pipe-phase-nav{background:var(--sf);border:1px solid var(--bd);border-radius:8px;margin-bottom:18px;overflow:hidden}
 .pipe-phase-tabs{display:flex;overflow-x:auto;scrollbar-width:none}
 .pipe-phase-tabs::-webkit-scrollbar{display:none}
@@ -301,10 +255,6 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .pipe-phase-tab.active{color:var(--tx);border-bottom-color:var(--tab-color,#2563eb)}
 .pipe-phase-tab .pdot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
 .pipe-phase-tab.dimmed{opacity:.4}
-
-/* ═══════════════════════════════════════════
-   PIPELINE: PHASE CONTENT
-═══════════════════════════════════════════ */
 .pipe-phase-section{display:none}
 .pipe-phase-section.active{display:block}
 .pipe-phase-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;padding:18px 20px;background:var(--sf);border:1px solid var(--bd);border-radius:10px}
@@ -314,10 +264,6 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .pipe-phase-stat-count{font-family:'Syne',sans-serif;font-size:24px;font-weight:700;text-align:right}
 .pipe-phase-stat-label{font-size:9px;color:var(--mu);text-transform:uppercase;letter-spacing:.08em;text-align:right}
 .pipe-conditional-tag{display:inline-flex;align-items:center;gap:5px;font-family:'IBM Plex Mono',monospace;font-size:9px;background:var(--amd);border:1px solid rgba(217,119,6,.3);color:var(--am);border-radius:4px;padding:3px 8px;margin-top:6px}
-
-/* ═══════════════════════════════════════════
-   PIPELINE: TASK GROUPS & ROWS
-═══════════════════════════════════════════ */
 .pipe-group{background:var(--sf);border:1px solid var(--bd);border-radius:10px;margin-bottom:14px;overflow:hidden}
 .pipe-group-header{padding:12px 18px;background:var(--s2);border-bottom:1px solid var(--bd);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--mu);display:flex;align-items:center;justify-content:space-between}
 .pipe-group-progress{font-size:10px;color:var(--mu)}
@@ -339,96 +285,89 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .pipe-notes-inp{width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:5px;padding:7px 10px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--tx);resize:none;min-height:52px;transition:border-color .2s}
 .pipe-notes-inp:focus{outline:none;border-color:var(--bl)}
 .pipe-notes-lbl{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--mu);margin-bottom:4px}
-
-
-/* ── Checklist edit controls ── */
-.pipe-task-row { position: relative; }
-.pipe-task-grip { cursor: grab; color: var(--bd); font-size: 14px; padding: 0 6px 0 0; user-select: none; flex-shrink:0; margin-top:2px; transition: color .15s; }
-.pipe-task-grip:hover { color: var(--mu); }
-.pipe-task-grip:active { cursor: grabbing; }
-.pipe-task-row.drag-over { border-top: 2px solid var(--bl); }
-.pipe-task-row.dragging { opacity: .4; }
-.pipe-task-acts { display: flex; gap: 4px; margin-left: auto; flex-shrink: 0; opacity: 0; transition: opacity .15s; }
-.pipe-task-row:hover .pipe-task-acts { opacity: 1; }
-.pipe-task-act { background: none; border: none; cursor: pointer; font-size: 11px; padding: 2px 5px; border-radius: 4px; color: var(--mu); transition: all .15s; }
-.pipe-task-act:hover { background: var(--s3); color: var(--tx); }
-.pipe-task-act.del:hover { background: var(--rdd); color: var(--rd); }
-.pipe-task-text-edit { font-size: 12px; color: var(--tx); background: var(--bld); border: 1px solid var(--bl); border-radius: 4px; padding: 2px 6px; width: 100%; font-family: 'IBM Plex Mono', monospace; outline: none; }
-.pipe-add-task-row { padding: 8px 18px; border-top: 1px dashed var(--bd); }
-.pipe-add-task-btn { background: none; border: none; cursor: pointer; font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: .08em; color: var(--mu); padding: 4px 0; transition: color .15s; }
-.pipe-add-task-btn:hover { color: var(--bl); }
-
-
-/* ── Task edit modal ── */
-.pipe-task-modal { width: 460px; max-width: 95vw; padding: 28px 26px; }
-.pipe-task-modal h3 { font-family: 'Syne', sans-serif; font-size: 17px; font-weight: 700; margin-bottom: 4px; }
-.pipe-task-modal .modal-sub { font-size: 11px; color: var(--mu); margin-bottom: 22px; }
-.ptm-field { margin-bottom: 16px; }
-.ptm-label { font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: .12em; text-transform: uppercase; color: var(--mu); display: block; margin-bottom: 6px; }
-.ptm-input { width: 100%; background: var(--s2); border: 1px solid var(--bd); border-radius: 6px; padding: 9px 12px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--tx); outline: none; transition: border-color .2s; }
-.ptm-input:focus { border-color: var(--bl); background: var(--sf); }
-.ptm-toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; background: var(--s2); border: 1px solid var(--bd); border-radius: 8px; margin-bottom: 16px; }
-.ptm-toggle-label { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--tx); }
-.ptm-toggle-sub { font-size: 10px; color: var(--mu); margin-top: 1px; }
-.ptm-switch { position: relative; width: 36px; height: 20px; flex-shrink: 0; }
-.ptm-switch input { opacity: 0; width: 0; height: 0; }
-.ptm-switch-slider { position: absolute; inset: 0; background: var(--bd); border-radius: 20px; cursor: pointer; transition: .2s; }
-.ptm-switch-slider::before { content: ''; position: absolute; width: 14px; height: 14px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: .2s; }
-.ptm-switch input:checked + .ptm-switch-slider { background: var(--bl); }
-.ptm-switch input:checked + .ptm-switch-slider::before { transform: translateX(16px); }
-.ptm-note-preview { background: var(--bld); border: 1px solid rgba(59,130,246,.2); border-radius: 6px; padding: 9px 12px; font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--bl); margin-bottom: 16px; }
-.ptm-btns { display: flex; justify-content: flex-end; gap: 10px; margin-top: 6px; }
-
-
-/* ── Customer Profile Tab ── */
-.profile-header { background: var(--tx); color: #fff; border-radius: 10px; padding: 20px 24px; margin-bottom: 22px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.profile-header-left h2 { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 800; color: #fff; }
-.profile-header-left .sub { font-size: 10px; letter-spacing: .15em; text-transform: uppercase; color: rgba(255,255,255,.45); margin-bottom: 5px; }
-.profile-meta { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
-.profile-meta-chip { font-family: 'IBM Plex Mono', monospace; font-size: 10px; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.18); border-radius: 20px; padding: 4px 12px; color: #e2e8f0; }
-.profile-section { background: var(--sf); border: 1px solid var(--bd); border-radius: 10px; margin-bottom: 16px; overflow: hidden; }
-.profile-section-title { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--mu); padding: 11px 18px; background: var(--s2); border-bottom: 1px solid var(--bd); display: flex; align-items: center; gap: 8px; }
-.profile-row { display: flex; align-items: baseline; gap: 12px; padding: 10px 18px; border-bottom: 1px solid var(--bd); }
-.profile-row:last-child { border-bottom: none; }
-.profile-row.empty { opacity: .45; }
-.profile-q { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--mu); min-width: 200px; max-width: 220px; flex-shrink: 0; line-height: 1.5; }
-.profile-a { font-size: 12px; color: var(--tx); font-weight: 500; line-height: 1.5; }
-.profile-a.blank { color: var(--mu); font-style: italic; font-weight: 400; }
-.profile-a-badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; }
-.profile-a-badge.yes { background: var(--gnd); color: var(--gn); }
-.profile-a-badge.no  { background: var(--rdd); color: var(--rd); }
-
-
-/* ══ Signature System ══ */
-.sig-send-btn { margin-top: 18px; display: flex; gap: 10px; align-items: center; }
-.sig-status-bar { margin-top: 14px; border-radius: 8px; padding: 12px 16px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; display: flex; align-items: center; gap: 10px; }
-.sig-status-bar.pending  { background: rgba(217,119,6,.08);  color: #d97706; border: 1px solid rgba(217,119,6,.2); }
-.sig-status-bar.signed   { background: var(--gnd); color: var(--gn); border: 1px solid rgba(22,163,74,.2); }
-.sig-status-bar.none     { background: var(--s2); color: var(--mu); border: 1px solid var(--bd); }
-
-/* Send modal */
-.sig-modal { width: 480px; max-width: 95vw; padding: 28px 26px; }
-.sig-modal h3 { font-family: 'Syne', sans-serif; font-size: 17px; font-weight: 700; margin-bottom: 4px; }
-.sig-modal .modal-sub { font-size: 11px; color: var(--mu); margin-bottom: 22px; }
-.sig-field { margin-bottom: 14px; }
-.sig-label { font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: .12em; text-transform: uppercase; color: var(--mu); display: block; margin-bottom: 5px; }
-.sig-input { width: 100%; background: var(--s2); border: 1px solid var(--bd); border-radius: 6px; padding: 9px 12px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--tx); outline: none; transition: border-color .2s; }
-.sig-input:focus { border-color: var(--bl); background: var(--sf); }
-.sig-link-box { background: var(--s2); border: 1px solid var(--bd); border-radius: 8px; padding: 10px 14px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--bl); word-break: break-all; margin-bottom: 14px; cursor: pointer; }
-.sig-link-box:hover { background: var(--bld); }
-.sig-btns { display: flex; justify-content: flex-end; gap: 10px; margin-top: 6px; }
-
-/* Check signatures modal */
-.sig-list-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid var(--bd); font-size: 12px; }
-.sig-list-item:last-child { border-bottom: none; }
-.sig-list-name { font-weight: 600; color: var(--tx); }
-.sig-list-email { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--mu); }
-.sig-list-badge { font-family: 'IBM Plex Mono', monospace; font-size: 10px; padding: 3px 10px; border-radius: 20px; }
-.sig-list-badge.signed  { background: var(--gnd); color: var(--gn); }
-.sig-list-badge.pending { background: rgba(217,119,6,.1); color: #d97706; }
-
-/* Customer signing page (injected into new window) */
-
+.pipe-task-row{position:relative}
+.pipe-task-grip{cursor:grab;color:var(--bd);font-size:14px;padding:0 6px 0 0;user-select:none;flex-shrink:0;margin-top:2px;transition:color .15s}
+.pipe-task-grip:hover{color:var(--mu)}
+.pipe-task-grip:active{cursor:grabbing}
+.pipe-task-row.drag-over{border-top:2px solid var(--bl)}
+.pipe-task-row.dragging{opacity:.4}
+.pipe-task-acts{display:flex;gap:4px;margin-left:auto;flex-shrink:0;opacity:0;transition:opacity .15s}
+.pipe-task-row:hover .pipe-task-acts{opacity:1}
+.pipe-task-act{background:none;border:none;cursor:pointer;font-size:11px;padding:2px 5px;border-radius:4px;color:var(--mu);transition:all .15s}
+.pipe-task-act:hover{background:var(--s3);color:var(--tx)}
+.pipe-task-act.del:hover{background:var(--rdd);color:var(--rd)}
+.pipe-task-text-edit{font-size:12px;color:var(--tx);background:var(--bld);border:1px solid var(--bl);border-radius:4px;padding:2px 6px;width:100%;font-family:'IBM Plex Mono',monospace;outline:none}
+.pipe-add-task-row{padding:8px 18px;border-top:1px dashed var(--bd)}
+.pipe-add-task-btn{background:none;border:none;cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.08em;color:var(--mu);padding:4px 0;transition:color .15s}
+.pipe-add-task-btn:hover{color:var(--bl)}
+.pipe-task-modal{width:460px;max-width:95vw;padding:28px 26px}
+.pipe-task-modal h3{font-family:'Syne',sans-serif;font-size:17px;font-weight:700;margin-bottom:4px}
+.pipe-task-modal .modal-sub{font-size:11px;color:var(--mu);margin-bottom:22px}
+.ptm-field{margin-bottom:16px}
+.ptm-label{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--mu);display:block;margin-bottom:6px}
+.ptm-input{width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:6px;padding:9px 12px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--tx);outline:none;transition:border-color .2s}
+.ptm-input:focus{border-color:var(--bl);background:var(--sf)}
+.ptm-toggle-row{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--s2);border:1px solid var(--bd);border-radius:8px;margin-bottom:16px}
+.ptm-toggle-label{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--tx)}
+.ptm-toggle-sub{font-size:10px;color:var(--mu);margin-top:1px}
+.ptm-switch{position:relative;width:36px;height:20px;flex-shrink:0}
+.ptm-switch input{opacity:0;width:0;height:0}
+.ptm-switch-slider{position:absolute;inset:0;background:var(--bd);border-radius:20px;cursor:pointer;transition:.2s}
+.ptm-switch-slider::before{content:'';position:absolute;width:14px;height:14px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}
+.ptm-switch input:checked+.ptm-switch-slider{background:var(--bl)}
+.ptm-switch input:checked+.ptm-switch-slider::before{transform:translateX(16px)}
+.ptm-note-preview{background:var(--bld);border:1px solid rgba(59,130,246,.2);border-radius:6px;padding:9px 12px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--bl);margin-bottom:16px}
+.ptm-btns{display:flex;justify-content:flex-end;gap:10px;margin-top:6px}
+.profile-header{background:var(--tx);color:#fff;border-radius:10px;padding:20px 24px;margin-bottom:22px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.profile-header-left h2{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:#fff}
+.profile-header-left .sub{font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.45);margin-bottom:5px}
+.profile-meta{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+.profile-meta-chip{font-family:'IBM Plex Mono',monospace;font-size:10px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);border-radius:20px;padding:4px 12px;color:#e2e8f0}
+.profile-section{background:var(--sf);border:1px solid var(--bd);border-radius:10px;margin-bottom:16px;overflow:hidden}
+.profile-section-title{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--mu);padding:11px 18px;background:var(--s2);border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:8px}
+.profile-row{display:flex;align-items:baseline;gap:12px;padding:10px 18px;border-bottom:1px solid var(--bd)}
+.profile-row:last-child{border-bottom:none}
+.profile-row.empty{opacity:.45}
+.profile-q{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--mu);min-width:200px;max-width:220px;flex-shrink:0;line-height:1.5}
+.profile-a{font-size:12px;color:var(--tx);font-weight:500;line-height:1.5}
+.profile-a.blank{color:var(--mu);font-style:italic;font-weight:400}
+.profile-a-badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:500}
+.profile-a-badge.yes{background:var(--gnd);color:var(--gn)}
+.profile-a-badge.no{background:var(--rdd);color:var(--rd)}
+.sig-send-btn{margin-top:18px;display:flex;gap:10px;align-items:center}
+.sig-status-bar{margin-top:14px;border-radius:8px;padding:12px 16px;font-family:'IBM Plex Mono',monospace;font-size:11px;display:flex;align-items:center;gap:10px}
+.sig-status-bar.pending{background:rgba(217,119,6,.08);color:#d97706;border:1px solid rgba(217,119,6,.2)}
+.sig-status-bar.signed{background:var(--gnd);color:var(--gn);border:1px solid rgba(22,163,74,.2)}
+.sig-status-bar.none{background:var(--s2);color:var(--mu);border:1px solid var(--bd)}
+.sig-modal{width:480px;max-width:95vw;padding:28px 26px}
+.sig-modal h3{font-family:'Syne',sans-serif;font-size:17px;font-weight:700;margin-bottom:4px}
+.sig-modal .modal-sub{font-size:11px;color:var(--mu);margin-bottom:22px}
+.sig-field{margin-bottom:14px}
+.sig-label{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--mu);display:block;margin-bottom:5px}
+.sig-input{width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:6px;padding:9px 12px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--tx);outline:none;transition:border-color .2s}
+.sig-input:focus{border-color:var(--bl);background:var(--sf)}
+.sig-link-box{background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:10px 14px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--bl);word-break:break-all;margin-bottom:14px;cursor:pointer}
+.sig-link-box:hover{background:var(--bld)}
+.sig-btns{display:flex;justify-content:flex-end;gap:10px;margin-top:6px}
+.sig-list-item{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--bd);font-size:12px}
+.sig-list-item:last-child{border-bottom:none}
+.sig-list-name{font-weight:600;color:var(--tx)}
+.sig-list-email{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--mu)}
+.sig-list-badge{font-family:'IBM Plex Mono',monospace;font-size:10px;padding:3px 10px;border-radius:20px}
+.sig-list-badge.signed{background:var(--gnd);color:var(--gn)}
+.sig-list-badge.pending{background:rgba(217,119,6,.1);color:#d97706}
+.audit-modal{width:560px;max-width:96vw;max-height:88vh;overflow:hidden;display:flex;flex-direction:column}
+.audit-list{flex:1;overflow-y:auto;padding:14px 20px;display:flex;flex-direction:column;gap:8px;max-height:60vh}
+.audit-entry{display:flex;gap:12px;align-items:flex-start;padding:10px 12px;background:var(--s2);border:1px solid var(--bd);border-radius:7px}
+.audit-dot{width:8px;height:8px;border-radius:50%;background:var(--bl);flex-shrink:0;margin-top:5px}
+.audit-body{flex:1;min-width:0}
+.audit-field{font-size:11px;font-weight:600;color:var(--tx);margin-bottom:3px}
+.audit-section{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--mu);margin-bottom:4px}
+.audit-change{font-size:11px;color:var(--mu);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.audit-old{text-decoration:line-through;color:var(--rd);opacity:.8;font-style:italic}
+.audit-new{color:var(--gn);font-weight:500}
+.audit-time{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--mu);white-space:nowrap;flex-shrink:0;margin-top:3px}
+.audit-empty{text-align:center;padding:40px 20px;color:var(--mu);font-size:12px}
 </style>
 </head>
 <body>
@@ -441,7 +380,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 <div class="app">
   <div class="hdr" style="background:linear-gradient(135deg,#2b2b2b 0%,#1a1a1a 100%);border-radius:12px;padding:20px 28px;margin-bottom:24px;border:none;box-shadow:0 4px 20px rgba(0,0,0,.15)">
     <div class="hdr-l" style="display:flex;align-items:center;gap:20px">
-      <img src="data:image/jpeg;base64,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" alt="Reveleer" style="height:38px;width:auto">
+      <img src="data:image/jpeg;base64,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" alt="Reveleer" style="height:38px;width:auto">
       <div style="width:1px;height:36px;background:rgba(255,255,255,.2)"></div>
       <h1 style="color:#fff;font-family:'Syne',sans-serif;font-size:clamp(18px,2.5vw,26px);font-weight:700;letter-spacing:-.02em;line-height:1.2">Prospective Risk <span style="color:#F03D2F">Scoping</span> Form</h1>
     </div>
@@ -465,37 +404,40 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
     </div>
   </div>
 
-  <!-- VERSION BAR -->
   <div class="ver-bar">
     <span class="ver-label">Customer</span>
     <select class="ver-select" id="verSelect" onchange="switchVersion(this.value)"></select>
     <span class="ver-badge" id="verBadge">Default</span>
     <div class="ver-actions">
+      <select class="ver-select" id="statusSelect" onchange="setCustomerStatus(this.value)" title="Customer Status" style="max-width:160px">
+        <option value="">— Status —</option>
+        <option value="Customer Review in Progress">Customer Review in Progress</option>
+        <option value="Customer Review Complete">Customer Review Complete</option>
+        <option value="Product Review Complete">Product Review Complete</option>
+        <option value="In Implementation">In Implementation</option>
+        <option value="Live">Live</option>
+      </select>
       <button class="btn btn-gh btn-sm" onclick="openVerModal()">⊕ New Customer</button>
       <button class="btn btn-gh btn-sm" id="hiddenBtn" style="display:none" onclick="auth(()=>openHiddenModal())">👁 Hidden Items</button>
     </div>
   </div>
-  <!-- MODE SWITCHER -->
   <div class="mode-bar" id="modeBar">
     <button class="mode-btn on" id="modeScoping" onclick="setMode('scoping')">📋 Scoping Form</button>
     <button class="mode-btn" id="modePipeline" onclick="setMode('pipeline')">🚀 Implementation Go-Live Checklist</button>
     <button class="mode-btn" id="modeProfile" onclick="setMode('profile')">👤 Customer Profile</button>
     <div class="mode-live-badge" id="modeLiveBadge">● LIVE</div>
   </div>
-  <!-- SCOPING VIEW -->
   <div id="scopingView">
     <div class="snav" id="snav"></div>
     <div class="prog"><div class="progb" id="prog"></div></div>
     <div id="wrap"></div>
   </div>
-  <!-- PIPELINE VIEW -->
   <div id="pipelineView" style="display:none">
     <div class="pipe-customer-bar" id="pipeCustomerBar"></div>
     <div class="pipe-progress-strip" id="pipeProgressStrip"></div>
     <div class="pipe-phase-nav" id="pipePhaseNav"></div>
     <div class="pipe-content" id="pipeContent"></div>
   </div>
-  <!-- CUSTOMER PROFILE VIEW -->
   <div id="profileView" style="display:none">
     <div id="profileContent"></div>
   </div>
@@ -609,8 +551,6 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
       <input type="text" id="fmHint" placeholder="Short note shown below the field">
       <div class="ml">Placeholder Text <span style="font-size:9px;opacity:.65">(optional)</span></div>
       <input type="text" id="fmPh" placeholder="Ghost text inside the input">
-
-      <!-- BRANCHING -->
       <div class="branch-section">
         <div class="ml">⤷ Show this field only if… <span style="font-size:9px;opacity:.65">(optional)</span></div>
         <div class="branch-row">
@@ -634,17 +574,121 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 <!-- TOAST -->
 <div class="toast" id="toast"><div class="toast-bar"></div><span id="tIco"></span><span id="tMsg"></span></div>
 
+<!-- TASK EDIT MODAL -->
+<div class="ov" id="taskEditOv">
+  <div class="ov-bg" onclick="closeTaskModal()"></div>
+  <div class="ov-box pipe-task-modal">
+    <h3>Edit Task</h3>
+    <p class="modal-sub">Changes apply globally across all customers.</p>
+    <div class="ptm-field">
+      <label class="ptm-label">Task Name</label>
+      <input class="ptm-input" id="ptmText" type="text" maxlength="200" placeholder="Task description…">
+    </div>
+    <div class="ptm-field">
+      <label class="ptm-label">Owner</label>
+      <input class="ptm-input" id="ptmOwner" type="text" maxlength="80" placeholder="e.g. Implementation, Kyle, Analytics…">
+    </div>
+    <div class="ptm-toggle-row">
+      <div>
+        <div class="ptm-toggle-label">Enable note field</div>
+        <div class="ptm-toggle-sub">Adds a per-customer text area below this task</div>
+      </div>
+      <label class="ptm-switch">
+        <input type="checkbox" id="ptmNoteEnabled" onchange="ptmToggleNotePreview()">
+        <span class="ptm-switch-slider"></span>
+      </label>
+    </div>
+    <div class="ptm-note-preview" id="ptmNotePreview" style="display:none">
+      📝 A note field will appear below this task on the checklist.
+    </div>
+    <div class="ptm-btns">
+      <button class="btn btn-gh" onclick="closeTaskModal()">Cancel</button>
+      <button class="btn btn-pri" onclick="saveTaskModal()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- SEND FOR SIGNATURE MODAL -->
+<div class="ov" id="sigSendOv">
+  <div class="ov-bg" onclick="closeSigModal()"></div>
+  <div class="ov-box sig-modal">
+    <h3>Send for Signature</h3>
+    <p class="modal-sub">The customer will receive a link to review their scoping summary and sign off before kickoff.</p>
+    <div class="sig-field">
+      <label class="sig-label">Recipient Name</label>
+      <input class="sig-input" id="sigRecipName" type="text" placeholder="e.g. Jane Smith">
+    </div>
+    <div class="sig-field">
+      <label class="sig-label">Recipient Email</label>
+      <input class="sig-input" id="sigRecipEmail" type="email" placeholder="jane@customer.com">
+    </div>
+    <div class="sig-field">
+      <label class="sig-label">Message (optional)</label>
+      <textarea class="sig-input" id="sigMessage" rows="3" placeholder="Please review and sign off on your implementation scoping details before our kickoff call."></textarea>
+    </div>
+    <div id="sigLinkResult" style="display:none">
+      <div class="sig-label" style="margin-bottom:6px">Shareable Link — click to copy</div>
+      <div class="sig-link-box" id="sigLinkBox" onclick="copySignLink()">Generating…</div>
+      <div style="font-size:10px;color:var(--mu);margin-bottom:14px">Share this link with your customer. They can review and sign without creating an account.</div>
+    </div>
+    <div class="sig-btns">
+      <button class="btn btn-gh" onclick="closeSigModal()">Close</button>
+      <button class="btn btn-pri" id="sigSendBtn" onclick="sendForSignature()">Generate Link & Send</button>
+    </div>
+  </div>
+</div>
+
+<!-- SIGNATURE STATUS MODAL -->
+<div class="ov" id="sigStatusOv">
+  <div class="ov-bg" onclick="closeSigStatusModal()"></div>
+  <div class="ov-box sig-modal">
+    <h3>Signature Status</h3>
+    <p class="modal-sub">Current signature request for this customer version.</p>
+    <div id="sigStatusBody"></div>
+    <div class="sig-btns">
+      <button class="btn btn-gh" onclick="closeSigStatusModal()">Close</button>
+      <button class="btn btn-pri" onclick="checkSignatureStatus()">↻ Refresh Status</button>
+    </div>
+  </div>
+</div>
+
+<!-- HIDDEN ITEMS MODAL -->
+<div class="ov" id="hiddenOv">
+  <div class="ov-bg" onclick="closeHiddenModal()"></div>
+  <div class="ov-box" style="width:500px;max-width:95vw;max-height:85vh;overflow-y:auto">
+    <div class="fm-hdr">
+      <div><h3>Hidden Items</h3><p>Restore fields, cards, or phases you previously hid.</p></div>
+      <button class="fm-x" onclick="closeHiddenModal()">&#x2715;</button>
+    </div>
+    <div class="fm-body" id="hiddenModalBody"></div>
+    <div class="fm-ftr"><button class="btn btn-gh" onclick="closeHiddenModal()">Close</button></div>
+  </div>
+</div>
+
+<!-- AUDIT LOG MODAL -->
+<div class="ov" id="auditOv">
+  <div class="ov-bg" onclick="closeAuditModal()"></div>
+  <div class="ov-box audit-modal">
+    <div class="fm-hdr">
+      <div>
+        <h3>Audit Log</h3>
+        <p id="auditModalSub" style="font-size:11px;color:var(--mu);margin-top:2px">Field change history for this customer</p>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn btn-gh btn-sm" onclick="clearAuditLog()" style="color:var(--rd);border-color:var(--rdd)">🗑 Clear</button>
+        <div class="fm-x" onclick="closeAuditModal()">✕</div>
+      </div>
+    </div>
+    <div class="audit-list" id="auditList"></div>
+    <div class="fm-ftr"><button class="btn btn-gh" onclick="closeAuditModal()">Close</button></div>
+  </div>
+</div>
+
 <script>
-// ══════════════════════════════════════════════════
-//  CONSTANTS
-// ══════════════════════════════════════════════════
 const PW = '522522';
 const SK = 'ci-v5';
-const VER_INDEX_KEY = 'ci-ver-index'; // stores [{id,name,created}]
+const VER_INDEX_KEY = 'ci-ver-index';
 
-// ══════════════════════════════════════════════════
-//  VERSION MANAGEMENT
-// ══════════════════════════════════════════════════
 let curVerId = 'default';
 let verIndex = [{id:'default', name:'Default', created: new Date().toISOString()}];
 
@@ -672,10 +716,8 @@ function buildVerSelect(){
 
 async function switchVersion(id){
   if(id === curVerId) return;
-  // Save current version first
   await saveData();
   curVerId = id;
-  // Reset to defaults before loading new version
   cards = defaultCards();
   SDEFS = [
     {id:'s0',ico:'🏥',ttl:'Customer Profile',              sub:'Identify the customer type and buying organization'},
@@ -699,6 +741,8 @@ async function switchVersion(id){
   migrateValFromDom();
   await loadPipeData();
   if (currentMode === 'pipeline') buildPipeline();
+  await loadCustomerStatus();
+  await loadAuditLog();
   toast(`Switched to: ${verIndex.find(v=>v.id===id)?.name||id}`,'📋');
 }
 
@@ -717,10 +761,7 @@ async function createVersion(){
     document.getElementById('verErr').textContent='A version with this name already exists.'; return;
   }
   const id = 'ver-' + Date.now();
-  // Save current state first
   await saveData();
-
-  // Always copy current form structure; strip answers so new customer starts blank
   {
     const snapshot = JSON.parse(JSON.stringify({cards, sdefs: SDEFS, secCards: SEC_CARDS}));
     const allDefaults = Object.keys(defaultCards());
@@ -737,7 +778,6 @@ async function createVersion(){
       }));
     } catch(e){}
   }
-
   verIndex.push({id, name, created: new Date().toISOString()});
   await saveVerIndex();
   closeVerModal();
@@ -779,7 +819,6 @@ async function deleteVersion(id){
   if(verIndex.length<=1){ toast('Cannot delete the only version','⚠️'); return; }
   const v = verIndex.find(x=>x.id===id); if(!v) return;
   if(!confirm(`Delete version "${v.name}"? This cannot be undone.`)) return;
-  // Delete storage key
   try { await store.del(verStorageKey(id)); } catch(e){}
   verIndex = verIndex.filter(x=>x.id!==id);
   await saveVerIndex();
@@ -794,12 +833,9 @@ async function deleteVersion(id){
 
 function exportVersion(){
   const curName = (verIndex.find(v=>v.id===curVerId)||{}).name || 'Export';
-
-  // Safely JSON-encode each piece of state (escape < > only)
   function enc(obj){
     return JSON.stringify(obj).replace(/</g,'\\u003c').replace(/>/g,'\\u003e');
   }
-
   const bakedScript = [
     '(function(){',
     '  var _s=' + enc(SDEFS) + ';',
@@ -809,37 +845,10 @@ function exportVersion(){
     '  window.__BAKED__={sdefs:_s,secCards:_c,cards:_d,pipe:_p};',
     '})();'
   ].join('\n');
-
   var patched = document.documentElement.outerHTML;
-
-  // Inject baked state before </body>
   patched = patched.replace('</body>', '<script>\n' + bakedScript + '\n<\/script>\n</body>');
-
-  // Patch initialisers to prefer baked data
-  patched = patched.replace(
-    'let SDEFS = window.__BAKED__ ? window.__BAKED__.sdefs : [',
-    'let SDEFS = window.__BAKED__ ? window.__BAKED__.sdefs : ['
-  );
-  if(patched.indexOf('let SDEFS = window.__BAKED__') === -1){
-    patched = patched.replace('let SDEFS = [', 'let SDEFS = window.__BAKED__ ? window.__BAKED__.sdefs : [');
-  }
-
-  if(patched.indexOf('const SEC_CARDS = window.__BAKED__') === -1){
-    patched = patched.replace('const SEC_CARDS = [', 'const SEC_CARDS = window.__BAKED__ ? window.__BAKED__.secCards : [');
-  }
-
-  patched = patched.replace(
-    'let cards = defaultCards();   // { cid: { title, fields[] } }',    'let cards = (function(){ var d=defaultCards(); if(window.__BAKED__){ Object.keys(window.__BAKED__.cards).forEach(function(k){ d[k]=window.__BAKED__.cards[k]; }); } return d; })();   // { cid: { title, fields[] } }'
-  );
-
-  patched = patched.replace(
-    'let pipePhases = JSON.parse(JSON.stringify(PIPE_PHASES_DEFAULT));',
-    'let pipePhases = window.__BAKED__ ? JSON.parse(JSON.stringify(window.__BAKED__.pipe)) : JSON.parse(JSON.stringify(PIPE_PHASES_DEFAULT));'
-  );
-
   var safeTitle = curName.replace(/</g,'&lt;').replace(/>/g,'&gt;');
   patched = patched.replace(/<title>[^<]*<\/title>/, '<title>Customer Scoping \u2014 ' + safeTitle + '<\/title>');
-
   var blob = new Blob([patched], {type:'text/html'});
   var a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -848,7 +857,6 @@ function exportVersion(){
   URL.revokeObjectURL(a.href);
   toast('HTML exported: ' + curName, '\u2193');
 }
-
 
 const TDEFS = {
   text:     {lbl:'Text',         ico:'✏️', sty:'background:rgba(59,130,246,.09);color:#3b82f6'},
@@ -863,7 +871,6 @@ const TDEFS = {
   chips:    {lbl:'Chips',        ico:'🏷️', sty:'background:rgba(22,163,74,.09);color:#16a34a'},
 };
 
-// Section definitions — mutable so they can be renamed, reordered, added, deleted
 let SDEFS = [
   {id:'s0',ico:'🏥',ttl:'Customer Profile',              sub:'Identify the customer type and buying organization'},
   {id:'s1',ico:'⚙️',ttl:'LOB',                           sub:'Lines of business, members, and risk configuration'},
@@ -875,12 +882,6 @@ let SDEFS = [
   {id:'s6',ico:'✅',ttl:'Scope Summary',                  sub:'Review your configuration before exporting'},
 ];
 
-// ══════════════════════════════════════════════════
-//  DEFAULT CARD SCHEMAS
-//  Every field in every card is data-driven from the start.
-//  Each field: { id, lbl, type, ph, hint, opts, builtin }
-//  builtin=true just means it came pre-installed (no functional difference)
-// ══════════════════════════════════════════════════
 function defaultCards(){
   return {
     'c0-org': {title:'Organization Details', fields:[
@@ -891,6 +892,7 @@ function defaultCards(){
       {id:'c0org-f3',lbl:'Email',type:'email',ph:'contact@org.com',hint:'',opts:[],builtin:true},
       {id:'c0org-f4',lbl:'Phone',type:'phone',ph:'+1 (555) 000-0000',hint:'',opts:[],builtin:true},
       {id:'c0org-f6',lbl:'Target Go-Live Date',type:'date',ph:'',hint:'',opts:[],builtin:true},
+      {id:'c0org-f7',lbl:'Status',type:'dropdown',ph:'',hint:'',opts:['Customer Review in Progress','Customer Review Complete','Product Review Complete','In Implementation','Live'],builtin:true},
     ]},
     'c1-lob': {title:'Lines of Business & Members', fields:[
       {id:'c1lob-f1',lbl:'Active Lines of Business',type:'chips',ph:'',hint:'Select all that apply',opts:['Medicare Advantage (MA)','ACA / Commercial','Medicaid (MCD)'],builtin:true},
@@ -982,21 +984,13 @@ function defaultCards(){
   };
 }
 
-// ══════════════════════════════════════════════════
-//  STATE
-// ══════════════════════════════════════════════════
-let cards = defaultCards();   // { cid: { title, fields[] } }
+let cards = defaultCards();
 let curStep = 0;
 let authed = false;
 let pendingFn = null;
-
-// Modal state
 let mCid = null, mFi = null, mType = null, mOpts = [];
-
-// Drag state
 let dragCid = null, dragFi = null;
 
-// Section → card mapping
 const SEC_CARDS = [
   ['c0-org'],
   ['c1-lob','c1-risk'],
@@ -1005,40 +999,26 @@ const SEC_CARDS = [
   ['c5-coding'],
   ['cx-1772828559357'],
   ['c1-core'],
-  [], // summary — no editable cards
+  [],
 ];
 
-// ══════════════════════════════════════════════════
-//  AUTH
-// ══════════════════════════════════════════════════
 function auth(fn){ if(authed){fn();return;} pendingFn=fn; document.getElementById('pinInp').value=''; document.getElementById('pinErr').textContent=''; document.getElementById('pinOv').classList.add('on'); setTimeout(()=>document.getElementById('pinInp').focus(),80); }
 function checkPin(){ const v=document.getElementById('pinInp').value; if(v===PW){authed=true;document.getElementById('pinOv').classList.remove('on');toast('Unlocked 🔓','🔓');if(pendingFn){pendingFn();pendingFn=null;}}else{const el=document.getElementById('pinInp');el.classList.add('err');el.value='';document.getElementById('pinErr').textContent='Incorrect password.';setTimeout(()=>el.classList.remove('err'),400);el.focus();} }
 function closePin(){ document.getElementById('pinOv').classList.remove('on'); pendingFn=null; }
 
-// ══════════════════════════════════════════════════
-//  STORAGE ADAPTER
-//  Auto-detects Claude artifact env vs plain browser.
-//  In Claude: uses window.storage (shared across users).
-//  In browser: uses localStorage (persists locally).
-// ══════════════════════════════════════════════════
 const inClaude = typeof window.storage !== 'undefined' && typeof window.storage.get === 'function';
 
-// ── SharePoint via Power Automate ──────────────────
 const SP_GET_URL = 'https://default044b1e3171a44846afc99671d32d99.6f.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/ad99f7e5d3f845efa22430b05dc9c615/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=OwO8ZIcdV_E_Z8qI72QF1Td2zmcZsZ0xtVp4Q85Rygs';
 const SP_SET_URL = 'https://default044b1e3171a44846afc99671d32d99.6f.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/391d343d02ef4d888983f9c351320192/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=SkqQzyeHPdR5LKwkwia-Bmm7Qmqii9xOhtfK1KcHtto';
 
 const store = {
   _spOk: false,
-
-  // READ: localStorage always (instant). SharePoint only used for initial sync on page load.
   async get(key){
     if(inClaude){
       try{ const r=await window.storage.get(key,true); return r?.value??null; }catch(e){ return null; }
     }
     return localStorage.getItem(key);
   },
-
-  // WRITE: localStorage immediately + await SharePoint write
   async set(key,val){
     if(inClaude){ await window.storage.set(key,val,true); return; }
     localStorage.setItem(key, val);
@@ -1049,27 +1029,12 @@ const store = {
         body:JSON.stringify({key:key, value:val})
       });
       store._spOk = r.ok;
-      if(!r.ok){
-        var t = await r.text().catch(function(){return '';});
-        console.warn('[SP set error]', r.status, t);
-      }
-    }catch(e){
-      store._spOk=false;
-      console.warn('[SP set failed]',e);
-    }
+    }catch(e){ store._spOk=false; }
   },
-
   async del(key){
     if(inClaude){ try{ await window.storage.delete(key,true); }catch(e){} return; }
     localStorage.removeItem(key);
-    fetch(SP_SET_URL, {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({key:key, value:''})
-    }).catch(function(e){ console.warn('[SP del failed]',e); });
   },
-
-  // Pull ALL rows from SharePoint in one call and sync to localStorage
   async syncFromSharePoint(){
     try{
       var r = await fetch(SP_GET_URL, {
@@ -1077,11 +1042,10 @@ const store = {
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({key:'__all__'})
       });
-      if(!r.ok){ console.warn('[SP sync HTTP error]', r.status); return 0; }
+      if(!r.ok) return 0;
       var d = await r.json();
-      // Response is the full Get_items body: {value: [{Title, Value}, ...]}
       var rows = d.value || [];
-      if(!Array.isArray(rows) || rows.length === 0){ return 0; }
+      if(!Array.isArray(rows) || rows.length === 0) return 0;
       var synced = 0;
       rows.forEach(function(row){
         var key = row.Title;
@@ -1092,21 +1056,17 @@ const store = {
         }
       });
       store._spOk = true;
-      console.log('[SP sync] synced', synced, 'keys from SharePoint');
       return synced;
-    }catch(e){
-      console.warn('[SP sync failed]', e);
-      return 0;
-    }
+    }catch(e){ return 0; }
   }
 };
+
 function setSync(s,l){
   const p=document.getElementById('syncPill');
   p.className='sync-pill '+s;
   p.querySelector('.sdot').className='sdot'+(s==='sy'?' pu':'');
   document.getElementById('syncLbl').textContent=l;
 }
-
 
 async function loadData(){
   try{
@@ -1130,7 +1090,7 @@ async function loadData(){
       });
     }
     setSync('ok', store._spOk ? 'Saved · SharePoint' : 'Saved locally');
-  }catch(e){ console.error('[loadData]',e); setSync('ok','Ready'); }
+  }catch(e){ setSync('ok','Ready'); }
 }
 
 async function saveData(){
@@ -1146,24 +1106,17 @@ async function saveData(){
     await store.set(verStorageKey(curVerId),JSON.stringify({vals:vals}));
     var lbl = store._spOk ? 'Saved · SharePoint' : 'Saved locally';
     setSync('ok', lbl);
-    setTimeout(function(){ setSync('ok', store._spOk ? 'Saved · SharePoint' : 'Saved locally'); },2200);
-  }catch(e){ setSync('er','Save failed'); toast('Could not save'); }
+  }catch(e){ setSync('er','Save failed'); }
 }
 
-// ══════════════════════════════════════════════════
-//  INIT
-// ══════════════════════════════════════════════════
 document.getElementById('docId').textContent='CI–'+(Math.floor(Math.random()*9000)+1000);
 document.getElementById('docDate').textContent=new Date().toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'});
 
-
-// ── Migrate DOM → val for any fields loaded without val (legacy data) ──
 function migrateValFromDom() {
-  console.log('[Migrate] Starting migration...');
   let dirty = false;
   Object.keys(cards).forEach(cid => {
     (cards[cid]?.fields || []).forEach((f, fi) => {
-      if (f.val !== undefined && f.val !== null && f.val !== '') return; // already set
+      if (f.val !== undefined && f.val !== null && f.val !== '') return;
       const row = document.getElementById(`fr-${cid}-${fi}`);
       if (!row) return;
       let v = null;
@@ -1180,50 +1133,27 @@ function migrateValFromDom() {
       if (v !== null) { f.val = v; dirty = true; }
     });
   });
-  if (dirty) { console.log('[Migrate] Dirty — saving backfilled vals'); saveData(); }
-  else { console.log('[Migrate] Nothing to backfill'); }
-  // Log all field vals after migration
-  Object.keys(cards).forEach(cid => {
-    (cards[cid]?.fields||[]).forEach(f => {
-      if (f.val !== undefined && f.val !== '') console.log(`[Migrate] ${cid} | "${f.lbl}" | val="${f.val}"`);
-    });
-  });
+  if (dirty) saveData();
 }
 
-
-// ══════════════════════════════════════════════════
-//  RESET FORM
-// ══════════════════════════════════════════════════
 async function resetForm() {
   if (!confirm('Reset all scoping answers and checklist progress for this customer version? This cannot be undone.')) return;
-
-  // Clear all field vals in cards
   Object.keys(cards).forEach(cid => {
     (cards[cid]?.fields || []).forEach(f => { delete f.val; });
   });
   await saveData();
-
-  // Clear pipeline checked state
   pipeChecked = {};
   pipeNotes = {};
   await savePipeData();
-
-  // Rebuild scoping form (restores empty state)
   buildSections();
   curStep = 0;
   buildNav();
   updProg();
   Object.keys(cards).forEach(cid => { attachBranchListeners(cid); evalBranching(cid); });
-
-  // Rebuild pipeline if visible
   if (currentMode === 'pipeline') buildPipeline();
-
   toast('Form reset ✓', '↺');
 }
 
-// ══════════════════════════════════════════════════
-//  GLOBAL STRUCTURE
-// ══════════════════════════════════════════════════
 const GLOBAL_STRUCT_KEY = 'ci-global-struct';
 let gstruct = {
   fieldDefs:{}, fieldOrder:{}, hiddenFields:{}, hiddenCards:{},
@@ -1234,7 +1164,7 @@ let gstruct = {
 function saveGStruct(){
   var val=JSON.stringify(gstruct);
   try{ localStorage.setItem(GLOBAL_STRUCT_KEY, val); }catch(e){}
-  store.set(GLOBAL_STRUCT_KEY, val).catch(function(e){ console.warn('[saveGStruct SP]',e); });
+  store.set(GLOBAL_STRUCT_KEY, val).catch(function(e){});
 }
 
 async function loadGStruct(){
@@ -1253,7 +1183,7 @@ async function loadGStruct(){
     gstruct.newCards       = s.newCards       ||{};
     gstruct.sdefs          = s.sdefs          ||null;
     gstruct.secCards       = s.secCards       ||null;
-  }catch(e){ console.error('[loadGStruct]',e); }
+  }catch(e){}
 }
 
 function applyGStruct(){
@@ -1292,14 +1222,13 @@ function applyGStruct(){
       (cards[cid].fields||[]).forEach(function(f){if(!order.includes(f.id))ordered.push(f);});
       cards[cid].fields=ordered;
     });
-
     if(gstruct.sdefs&&gstruct.sdefs.length){
       SDEFS.length=0; gstruct.sdefs.forEach(function(s){SDEFS.push(Object.assign({},s));});
     }
     if(gstruct.secCards&&gstruct.secCards.length){
       SEC_CARDS.length=0; gstruct.secCards.forEach(function(a){SEC_CARDS.push(a.slice());});
     }
-  }catch(e){ console.error('[applyGStruct]',e); }
+  }catch(e){}
 }
 
 function updateHiddenBtn(){
@@ -1324,9 +1253,23 @@ function restoreSection(sid){ delete gstruct.hiddenSections[sid]; saveGStruct();
 function restoreCard(cid){ delete gstruct.hiddenCards[cid]; saveGStruct(); updateHiddenBtn(); rebuildAll(); renderHiddenModal(); toast('Card restored'); }
 function restoreField(fid){ delete gstruct.hiddenFields[fid]; saveGStruct(); updateHiddenBtn(); Object.keys(cards).forEach(function(cid){if((cards[cid]&&cards[cid].fields||[]).some(function(f){return f.id===fid;}))refreshCard(cid);}); renderHiddenModal(); toast('Field restored'); }
 
+function setCustomerStatus(val) {
+  const key = 'ci-status-' + curVerId;
+  store.set(key, val);
+}
+
+async function loadCustomerStatus() {
+  const key = 'ci-status-' + curVerId;
+  try {
+    const val = await store.get(key);
+    document.getElementById('statusSelect').value = val || '';
+  } catch(e) {
+    document.getElementById('statusSelect').value = '';
+  }
+}
+
 async function init(){
   setSync('sy','Syncing from SharePoint…');
-  // First load whatever is in localStorage so form is usable immediately
   await loadVerIndex();
   await loadGStruct();
   await loadData();
@@ -1335,15 +1278,9 @@ async function init(){
   Object.keys(cards).forEach(cid=>{ attachBranchListeners(cid); evalBranching(cid); });
   migrateValFromDom();
   updateHiddenBtn();
-
-  // Now sync from SharePoint in background — pull all known keys
-  var keysToSync = [VER_INDEX_KEY, GLOBAL_STRUCT_KEY];
-  verIndex.forEach(function(v){ keysToSync.push(verStorageKey(v.id)); keysToSync.push('ci-pipe-'+v.id); });
-  keysToSync.push('ci-pipe-global');
   try{
     setSync('sy','Syncing from SharePoint…');
-    var synced = await store.syncFromSharePoint(keysToSync);
-    // Only reload if SharePoint actually had data — prevents wiping local data
+    var synced = await store.syncFromSharePoint();
     if(synced > 0){
       await loadVerIndex();
       await loadGStruct();
@@ -1353,7 +1290,6 @@ async function init(){
       setSync('ok','Saved locally');
     }
   }catch(e){
-    console.warn('[SP sync failed]', e);
     setSync('ok','Saved locally');
   }
   buildVerSelect();
@@ -1364,25 +1300,19 @@ async function init(){
   document.getElementById('ldr').classList.add('off');
   buildVerSelect();
   buildNav(); buildSections(); updProg();
-  Object.keys(cards).forEach(cid=>{
-    attachBranchListeners(cid);
-    evalBranching(cid);
-  });
+  Object.keys(cards).forEach(cid=>{ attachBranchListeners(cid); evalBranching(cid); });
   migrateValFromDom();
   updateHiddenBtn();
   await loadPipeGlobal();
   await loadPipeData();
   hookPipelineLiveUpdates();
-
+  await loadCustomerStatus();
+  await loadAuditLog();
 }
 
-// ══════════════════════════════════════════════════
-//  NAV
-// ══════════════════════════════════════════════════
 function buildNav(){ document.getElementById('snav').innerHTML=SDEFS.map((s,i)=>`<button class="sb ${i===0?'on':''}" id="nb${i}" onclick="goTo(${i})"><span class="sn">${i+1}</span><span class="slbl">${esc(s.ttl.length>10?s.ttl.slice(0,9)+'…':s.ttl)}</span></button>`).join(''); }
 function updProg(){ document.getElementById('prog').style.width=((curStep+1)/SDEFS.length*100)+'%'; }
 function goTo(n){
-  // Check if destination section is Core Config — require auth
   var destSection = SDEFS[n];
   if(destSection && destSection.id === 'sx-1772836816552' && !authed){
     auth(function(){ goTo(n); });
@@ -1397,9 +1327,6 @@ function goTo(n){
   if(n===SDEFS.length-1)buildSummary();
 }
 
-// ══════════════════════════════════════════════════
-//  BUILD SECTIONS
-// ══════════════════════════════════════════════════
 function buildSections(){
   const summaryIdx = SDEFS.length - 1;
   document.getElementById('wrap').innerHTML=SDEFS.map((s,i)=>{
@@ -1411,7 +1338,6 @@ function buildSections(){
         ${SDEFS.length > 2 ? `<button class="sec-h-act danger" onclick="auth(()=>deleteSection(${i}))">🗑</button>` : ''}
         <button class="sec-h-act add-sec" onclick="auth(()=>openSecModal(-1,${i}))">＋ Add Phase After</button>
       </div>` : '';
-
     let cardHtml = '';
     if(!isSummary){
       const cids = SEC_CARDS[i] || [];
@@ -1429,7 +1355,6 @@ function buildSections(){
     } else {
       cardHtml = renderSummary();
     }
-
     return `
     <div class="sec ${i===0?'on':''}" id="sec${i}">
       <div class="sec-h">
@@ -1446,12 +1371,9 @@ function buildSections(){
   }).join('');
 }
 
-// ══════════════════════════════════════════════════
-//  SECTION (PHASE) MANAGEMENT
-// ══════════════════════════════════════════════════
 const ICONS = ['🏥','⚙️','🔄','🔗','🗄️','📝','✅','📋','🧩','🔍','📊','💡','🎯','🛠️','🔒','📁','🌐','⚡','🧪','📌'];
-let secModalIdx = null;   // index being edited, or -1 for new
-let secInsertAfter = null; // for new: insert after this index
+let secModalIdx = null;
+let secInsertAfter = null;
 let secSelIco = '';
 
 function openSecModal(idx, insertAfter){
@@ -1465,30 +1387,24 @@ function openSecModal(idx, insertAfter){
   document.getElementById('secNameInp').value = s.ttl;
   document.getElementById('secSubInp').value = s.sub;
   secSelIco = s.ico;
-  // Build icon grid
   document.getElementById('icoGrid').innerHTML = ICONS.map(ico=>
     `<div class="ico-opt${ico===secSelIco?' on':''}" onclick="pickSecIco('${ico}')" title="${ico}">${ico}</div>`
   ).join('');
   document.getElementById('secOv').classList.add('on');
   setTimeout(()=>document.getElementById('secNameInp').focus(), 80);
 }
-
 function closeSecModal(){ document.getElementById('secOv').classList.remove('on'); }
-
 function pickSecIco(ico){
   secSelIco = ico;
   document.querySelectorAll('.ico-opt').forEach(el=>el.classList.toggle('on', el.textContent===ico));
 }
-
 function saveSecModal(){
   const ttl = document.getElementById('secNameInp').value.trim();
   if(!ttl){ toast('Enter a phase name','⚠️'); return; }
   const sub = document.getElementById('secSubInp').value.trim();
   const ico = secSelIco || '📋';
   const summaryIdx = SDEFS.length - 1;
-
   if(secModalIdx === -1){
-    // Insert new phase — before the summary tab
     const newId = 'sx-' + Date.now();
     const newSec = {id: newId, ico, ttl, sub};
     const insertPos = secInsertAfter !== null ? secInsertAfter + 1 : summaryIdx;
@@ -1501,7 +1417,6 @@ function saveSecModal(){
     SDEFS[secModalIdx].ico = ico;
     toast('Phase updated','✓');
   }
-
   gstruct.sdefs=SDEFS.map(function(s){return Object.assign({},s);});
   gstruct.secCards=SEC_CARDS.map(function(a){return a.slice();});
   saveGStruct();
@@ -1521,25 +1436,17 @@ function rebuildAll(){
   buildNav();
   buildSections();
   updProg();
-  // Re-activate current step
   document.querySelectorAll('.sec').forEach((el,i)=>el.classList.toggle('on', i===curStep));
   document.querySelectorAll('.sb').forEach((el,i)=>el.classList.toggle('on', i===curStep));
-  // Reattach branching
   Object.keys(cards).forEach(cid=>{ attachBranchListeners(cid); evalBranching(cid); });
 }
 
-// ══════════════════════════════════════════════════
-//  ADD CARD TO SECTION
-// ══════════════════════════════════════════════════
 function promptAddCard(secIdx){
   const name = prompt('Card name:', 'New Card');
   if(name === null) return;
   const title = name.trim() || 'New Card';
-  // Generate a unique card ID
   const cid = 'cx-' + Date.now();
-  // Register card with empty fields
   cards[cid] = { title, fields: [] };
-  // Add to this section's card list
   if(!SEC_CARDS[secIdx]) SEC_CARDS[secIdx] = [];
   SEC_CARDS[secIdx].push(cid);
   gstruct.newCards[cid]={title:title,fields:[],secIdx:secIdx};
@@ -1616,7 +1523,6 @@ function renderField(cid,fi,f){
   else if(f.type==='multi') inp=`<select multiple style="min-height:80px" onchange="fieldInputChange('${cid}',${fi},[...this.selectedOptions].map(o=>o.value).join(', '))">` + (f.opts||[]).map(o=>`<option ${(Array.isArray(sv)?sv:[sv]).includes(o)?'selected':''}>${esc(o)}</option>`).join('') + `</select>`;
   else if(f.type==='chips') inp=`<div class="chip-grp">${(f.opts||[]).map(o=>`<div class="chip ${(Array.isArray(sv)?sv:[]).includes(o)?'on':''}" onclick="chipT(this,'${cid}',${fi})">${esc(o)}</div>`).join('')}</div>`;
 
-  // Branch badge — shown when this field has a condition
   const srcField=f.condFieldId ? (cards[cid]?.fields||[]).find(x=>x.id===f.condFieldId) : null;
   const branchBadge=srcField
     ? `<span class="branch-badge">⤷ if ${esc(srcField.lbl)} = ${esc(f.condVal)}</span>`
@@ -1643,9 +1549,6 @@ function renderField(cid,fi,f){
 </div>`;
 }
 
-// ══════════════════════════════════════════════════
-//  DRAG & DROP
-// ══════════════════════════════════════════════════
 function dStart(e,cid,fi){
   if(!authed){e.preventDefault();auth(()=>toast('Unlocked — drag to reorder','↕'));return;}
   dragCid=cid;dragFi=fi;e.dataTransfer.effectAllowed='move';
@@ -1686,9 +1589,6 @@ function dzDrop(e,cid){
   saveGStruct(); toast('Reordered for all customers!','↕');
 }
 
-// ══════════════════════════════════════════════════
-//  FIELD EDITOR MODAL
-// ══════════════════════════════════════════════════
 function openFM(cid,editFi){
   mCid=cid;mFi=editFi??null;mType=null;mOpts=[];
   const isEdit=mFi!==null;
@@ -1701,15 +1601,12 @@ function openFM(cid,editFi){
   document.getElementById('oTags').innerHTML='';
   document.getElementById('optsBox').classList.remove('on');
   document.querySelectorAll('.qt-o').forEach(el=>el.classList.remove('on'));
-
-  // Populate branch field selector — keyed by stable field ID, not index
   const fields=cards[cid]?.fields||[];
   const selfId = mFi!==null ? fields[mFi]?.id : null;
   const bfSel=document.getElementById('branchField');
   bfSel.innerHTML='<option value="">— No condition —</option>';
   fields.forEach((f)=>{
-    if(f.id===selfId) return; // can't depend on itself
-    // Only fields whose answers are knowable (yesno, dropdown, chips, multi)
+    if(f.id===selfId) return;
     if(!['yesno','dropdown','chips','multi'].includes(f.type)) return;
     const opt=document.createElement('option');
     opt.value=f.id;
@@ -1718,7 +1615,6 @@ function openFM(cid,editFi){
   });
   document.getElementById('branchVal').innerHTML='<option value="">— Pick a value —</option>';
   document.getElementById('branchClear').style.display='none';
-
   if(isEdit){
     const f=fields[editFi];
     if(f){
@@ -1727,7 +1623,6 @@ function openFM(cid,editFi){
       document.getElementById('fmPh').value=f.ph||'';
       mOpts=[...(f.opts||[])];
       pickType(f.type);refreshOTags();
-      // Restore branch condition using stable field ID
       if(f.condFieldId){
         bfSel.value=f.condFieldId;
         onBranchFieldChange(f.condVal);
@@ -1780,13 +1675,9 @@ function saveField(){
   if(!lbl){toast('Enter a field label','⚠️');return;}
   if(!mType){toast('Select a field type','⚠️');return;}
   if(['dropdown','multi','chips'].includes(mType)&&mOpts.length===0){toast('Add at least one option','⚠️');return;}
-
   const condFieldId=document.getElementById('branchField').value||null;
   const condVal=document.getElementById('branchVal').value||null;
-
-  // Preserve stable ID on edit so existing branches pointing to this field stay valid
   const existingId = mFi!==null ? (cards[mCid]?.fields?.[mFi]?.id||null) : null;
-
   const f={
     id: existingId||'f'+Date.now(),
     lbl, type:mType,
@@ -1820,11 +1711,6 @@ function delField(cid,fi){
   saveGStruct(); updateHiddenBtn(); refreshCard(cid); toast('Field hidden for all customers','👁');
 }
 
-// ══════════════════════════════════════════════════
-//  BRANCHING ENGINE
-//  Reads current answered values from the DOM and
-//  shows/hides fields that have condField/condVal set
-// ══════════════════════════════════════════════════
 function getFieldValue(cid, fieldId){
   const fields=cards[cid]?.fields||[];
   const fi=fields.findIndex(f=>f.id===fieldId);
@@ -1878,9 +1764,6 @@ function attachBranchListeners(cid){
   });
 }
 
-// ══════════════════════════════════════════════════
-//  FORM HELPERS
-// ══════════════════════════════════════════════════
 function ynT(btn){
   const g=btn.parentElement;
   g.querySelectorAll('.yb').forEach(b=>b.classList.remove('on'));
@@ -1890,13 +1773,16 @@ function ynT(btn){
     const parts=row.id.slice(3).split('-');
     const fi=parseInt(parts.pop());
     const cid=parts.join('-');
-    if(cards[cid]?.fields[fi]) { cards[cid].fields[fi].val=btn.textContent.trim(); saveData(); }
+    if(cards[cid]?.fields[fi]) {
+      const f = cards[cid].fields[fi];
+      const newVal = btn.textContent.trim();
+      auditRecord(f.lbl, f.val, newVal, getSectionName(cid));
+      f.val = newVal;
+      saveData();
+    }
   }
 }
 
-// ══════════════════════════════════════════════════
-//  SUMMARY
-// ══════════════════════════════════════════════════
 function renderSummary(){
   return `
 <div class="rw">
@@ -1931,7 +1817,6 @@ function renderSummary(){
 }
 
 function buildSummary(){
-  // Count total fields across all cards
   let total=0,sections=[];
   SEC_CARDS.forEach((cids,si)=>{
     if(si>=SDEFS.length-1)return;
@@ -1947,9 +1832,6 @@ function buildSummary(){
   if(fs)fs.innerHTML=sections.map(s=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--bd)"><span>${s.name}</span><span style="color:var(--bl);font-weight:600">${s.count} field${s.count!==1?'s':''}</span></div>`).join('');
 }
 
-// ══════════════════════════════════════════════════
-//  TOAST / HELPERS
-// ══════════════════════════════════════════════════
 function gearClick(e){
   e.stopPropagation();
   if(!authed){ auth(function(){ document.getElementById('gearDrop').classList.add('on'); }); return; }
@@ -1961,19 +1843,13 @@ document.addEventListener('click',function(e){ if(!e.target.closest('.gear-wrap'
 function toast(msg,ico='✓'){const t=document.getElementById('toast');document.getElementById('tMsg').textContent=msg;document.getElementById('tIco').textContent=ico;t.classList.add('on');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('on'),2400);}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
-// ══════════════════════════════════════════════════
-//  BACKUP & RESTORE
-// ══════════════════════════════════════════════════
 function backupData(){
-  // Collect every ci- key from localStorage
   const backup = {};
   for(let i = 0; i < localStorage.length; i++){
     const k = localStorage.key(i);
     if(k && k.startsWith('ci-')) backup[k] = localStorage.getItem(k);
   }
-  if(Object.keys(backup).length === 0){
-    toast('Nothing to backup yet','⚠️'); return;
-  }
+  if(Object.keys(backup).length === 0){ toast('Nothing to backup yet','⚠️'); return; }
   const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -1991,28 +1867,18 @@ function restoreData(event){
     try{
       const backup = JSON.parse(e.target.result);
       const keys = Object.keys(backup);
-      if(keys.length === 0 || !keys.some(k=>k.startsWith('ci-'))){
-        toast('Invalid backup file','⚠️'); return;
-      }
+      if(keys.length === 0 || !keys.some(k=>k.startsWith('ci-'))){ toast('Invalid backup file','⚠️'); return; }
       if(!confirm(`Restore ${keys.length} saved item(s) from backup? This will overwrite your current data.`)) return;
       keys.forEach(k => localStorage.setItem(k, backup[k]));
       toast('Backup restored — reloading…','✓');
       setTimeout(()=>location.reload(), 1200);
-    } catch(err){
-      toast('Could not read backup file','⚠️');
-    }
+    } catch(err){ toast('Could not read backup file','⚠️'); }
   };
   reader.readAsText(file);
-  // Reset input so same file can be selected again
   event.target.value = '';
 }
 
-
-// ══════════════════════════════════════════════════
-//  MODE SWITCHING
-// ══════════════════════════════════════════════════
 let currentMode = 'scoping';
-
 function setMode(mode) {
   currentMode = mode;
   document.getElementById('scopingView').style.display  = mode === 'scoping'  ? '' : 'none';
@@ -2025,9 +1891,6 @@ function setMode(mode) {
   if (mode === 'profile')  buildProfile();
 }
 
-// ══════════════════════════════════════════════════
-//  CUSTOMER PROFILE TAB
-// ══════════════════════════════════════════════════
 function buildProfile() {
   const ctx = getScopingContext();
   const orgName  = ctxVal(ctx, 'organization name', 'customer name', 'org name') || 'Customer';
@@ -2039,32 +1902,25 @@ function buildProfile() {
   }
   const lob      = ctxVal(ctx, 'lines of business', 'lob') || '—';
   const platform = ctxVal(ctx, 'deployment platform', 'emr platform', 'emr vendor', 'platform') || '—';
-
-  // Build sections from SDEFS + cards, skipping the summary section
   const summaryIdx = SDEFS.length - 1;
   let sectionsHtml = '';
-
   SDEFS.forEach((s, si) => {
-    if (si === summaryIdx) return; // skip summary
-    if (gstruct.hiddenSections[s.id]) return; // skip hidden sections
+    if (si === summaryIdx) return;
+    if (gstruct.hiddenSections[s.id]) return;
     const cids = SEC_CARDS[si] || [];
     if (!cids.length) return;
-
     let rowsHtml = '';
     cids.forEach(cid => {
-      if (gstruct.hiddenCards[cid]) return; // skip hidden cards
+      if (gstruct.hiddenCards[cid]) return;
       const card = cards[cid];
       if (!card) return;
       (card.fields || []).forEach((f, fi) => {
-        if (gstruct.hiddenFields[f.id]) return; // skip hidden fields
-        // Skip hidden-by-branch fields
+        if (gstruct.hiddenFields[f.id]) return;
         const row = document.getElementById(`fr-${cid}-${fi}`);
         if (row && row.classList.contains('hidden-by-branch')) return;
-
         let val = f.val ?? '';
         if (Array.isArray(val)) val = val.join(', ');
         val = String(val).trim();
-
         let displayVal;
         if (!val) {
           displayVal = `<span class="profile-a blank">—</span>`;
@@ -2077,7 +1933,6 @@ function buildProfile() {
         } else {
           displayVal = `<span class="profile-a">${esc(val)}</span>`;
         }
-
         rowsHtml += `
           <div class="profile-row ${!val ? 'empty' : ''}">
             <div class="profile-q">${esc(f.lbl)}</div>
@@ -2085,7 +1940,6 @@ function buildProfile() {
           </div>`;
       });
     });
-
     if (!rowsHtml) return;
     sectionsHtml += `
       <div class="profile-section">
@@ -2093,8 +1947,6 @@ function buildProfile() {
         ${rowsHtml}
       </div>`;
   });
-
-  // Check signature status for current version
   const sigRecord = sigRecords[curVerId] || {};
   const sigStatus = sigRecord.signedAt ? 'signed' : sigRecord.binId ? 'pending' : 'none';
   const statusBar = sigStatus === 'signed'
@@ -2102,7 +1954,6 @@ function buildProfile() {
     : sigStatus === 'pending'
     ? `<div class="sig-status-bar pending">⏳ Awaiting signature from ${esc(sigRecord.recipientEmail||'customer')} <button class="btn btn-gh btn-sm" style="margin-left:auto;font-size:10px" onclick="checkSignatureStatus()">↻ Check Status</button><button class="btn btn-gh btn-sm" style="font-size:10px" onclick="copySignLink()">🔗 Copy Link</button></div>`
     : `<div class="sig-status-bar none">No signature request sent yet.</div>`;
-
   document.getElementById('profileContent').innerHTML = `
     <div class="profile-header">
       <div class="profile-header-left">
@@ -2116,6 +1967,7 @@ function buildProfile() {
       </div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <button class="btn btn-sm" style="background:var(--bl);color:#fff" onclick="openSigModal()">✍️ Send for Signature</button>
+        <button class="btn btn-gh btn-sm" onclick="authAudit()">📋 Audit Log</button>
         ${sigStatus !== 'none' ? `<button class="btn btn-gh btn-sm" onclick="openSigStatusModal()">📋 View Signatures</button>` : ''}
       </div>
     </div>
@@ -2124,64 +1976,23 @@ function buildProfile() {
   `;
 }
 
-// ══════════════════════════════════════════════════
-//  SIGNATURE SYSTEM
-// ══════════════════════════════════════════════════
-
-// ══════════════════════════════════════════════════
-//  SIGNATURE SYSTEM — Power Automate backend
-// ══════════════════════════════════════════════════
-//
-// ⚠️  SETUP INSTRUCTIONS (one-time, ~10 minutes):
-//
-//  1. Go to make.powerautomate.com (or flow.microsoft.com)
-//  2. Create → Automated cloud flow → "When an HTTP request is received"
-//  3. Set Request Body JSON Schema to:
-//     { "type":"object", "properties": {
-//         "action":        {"type":"string"},
-//         "requestId":     {"type":"string"},
-//         "orgName":       {"type":"string"},
-//         "recipientName": {"type":"string"},
-//         "recipientEmail":{"type":"string"},
-//         "signerName":    {"type":"string"},
-//         "signerTitle":   {"type":"string"},
-//         "signatureData": {"type":"string"},
-//         "signedAt":      {"type":"string"},
-//         "scopingData":   {"type":"string"}
-//     }}
-//  4. Add actions based on action field:
-//     — If action == "new_request":
-//         • "Create item" in SharePoint list (site + list you choose)
-//         • "Send an email (V2)" to yourself notifying of new request
-//     — If action == "signed":
-//         • "Update item" in SharePoint list (match on requestId)
-//         • "Send an email (V2)" to yourself with signature notification
-//  5. Copy the HTTP POST URL from the trigger and paste it below:
-
-// ── Signature Power Automate flows ──────────────────
 const SP_SERVE_URL   = 'https://default044b1e3171a44846afc99671d32d99.6f.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/080010d3762147248231e50d0e7dc412/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=PowzU9QHLfxDz6omb07kgbbgpZU9_SbF3-UQcdL5Ghc';
 const SP_SEND_SIG_URL= 'https://default044b1e3171a44846afc99671d32d99.6f.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/eee5abd92b3a4ba7b594dfd8e56aee7f/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=Hjk9HLrnXfh6m-vlMZb46K2aPLLYrVYL_n7X4pUsdqA';
 const SP_REC_SIG_URL = 'https://default044b1e3171a44846afc99671d32d99.6f.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/4d7400c85c684c429a8951b25407467a/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=QnfjSsTjXUyBl7mO6InRbFlBGal1j-sUhBArItO8dEU';
-const POWER_AUTOMATE_URL = SP_REC_SIG_URL; // legacy reference
+const POWER_AUTOMATE_URL = SP_REC_SIG_URL;
 
-// Per-version signature records stored in localStorage
-// { [verId]: { requestId, recipientName, recipientEmail, sentAt, signedAt, signerName, signerTitle, signatureData, status } }
 let sigRecords = {};
-
 async function loadSigRecords() {
   try {
     const raw = localStorage.getItem('ci-sig-records');
     if (raw) sigRecords = JSON.parse(raw);
   } catch(e) { sigRecords = {}; }
 }
-
 function saveSigRecords() {
   localStorage.setItem('ci-sig-records', JSON.stringify(sigRecords));
 }
-
 function paSetup() { return true; }
 
-// ── Modal open/close ──
 function openSigModal() {
   const ctx = getScopingContext();
   const contact = ctxVal(ctx, 'primary contact') || '';
@@ -2197,7 +2008,6 @@ function closeSigModal()       { document.getElementById('sigSendOv').classList.
 function openSigStatusModal()  { renderSigStatus(); document.getElementById('sigStatusOv').classList.add('on'); }
 function closeSigStatusModal() { document.getElementById('sigStatusOv').classList.remove('on'); }
 
-// ── Build scoping data snapshot for the signing page ──
 function buildScopingSnapshot() {
   const summaryIdx = SDEFS.length - 1;
   const snapshot = [];
@@ -2221,7 +2031,6 @@ function buildScopingSnapshot() {
   return snapshot;
 }
 
-// ── Build the customer-facing signing page HTML ──
 function buildSigningPageHTML(requestId, recipientName, orgName, goLive, sectionsData) {
   const sectionsHtml = sectionsData.map(sec =>
     '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:16px;overflow:hidden">' +
@@ -2237,311 +2046,46 @@ function buildSigningPageHTML(requestId, recipientName, orgName, goLive, section
     }).join('') +
     '</table></div>'
   ).join('');
-
   const paUrl = SP_REC_SIG_URL.replace(/'/g, "\\'");
   const safeOrg = orgName.replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const safeRecip = (recipientName||'there').replace(/</g,'&lt;');
-
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Scoping Sign-Off — ${safeOrg}</title>
-<style>
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f1f5f9;color:#1e273f;min-height:100vh}
-  .wrap{max-width:720px;margin:0 auto;padding:32px 16px 80px}
-  .hdr{background:#1e273f;color:#fff;border-radius:12px;padding:24px 28px;margin-bottom:24px}
-  .hdr h1{font-size:22px;font-weight:800;letter-spacing:-.02em}
-  .hdr .sub{font-size:11px;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.45);margin-bottom:6px}
-  .chip{font-family:monospace;font-size:10px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);border-radius:20px;padding:3px 12px;color:#e2e8f0;display:inline-block;margin-top:10px}
-  .intro{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px;margin-bottom:20px;font-size:13px;line-height:1.6;color:#475569}
-  .sig-box{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:24px;margin-top:24px}
-  .sig-box h2{font-size:15px;font-weight:700;margin-bottom:6px}
-  .sig-box p{font-size:12px;color:#64748b;margin-bottom:18px;line-height:1.5}
-  .fld label{display:block;font-size:10px;font-family:monospace;text-transform:uppercase;letter-spacing:.1em;color:#94a3b8;margin-bottom:5px}
-  .fld{margin-bottom:14px}
-  .fld input{width:100%;border:1px solid #e2e8f0;border-radius:6px;padding:9px 12px;font-size:13px;color:#1e273f;outline:none}
-  .fld input:focus{border-color:#3b82f6}
-  .tabs{display:flex;gap:8px;margin-bottom:16px}
-  .tab{padding:7px 16px;border-radius:6px;border:1px solid #e2e8f0;background:#f8fafc;font-size:12px;cursor:pointer;color:#64748b}
-  .tab.on{background:#3b82f6;color:#fff;border-color:#3b82f6}
-  canvas{display:block;width:100%;height:140px;border:1px solid #e2e8f0;border-radius:6px;cursor:crosshair;touch-action:none;background:#fafafa}
-  .clr{text-align:right;margin-top:4px}
-  .clr button{font-size:10px;background:none;border:none;color:#94a3b8;cursor:pointer}
-  #typedWrap{display:none}
-  #typedWrap input{font-family:'Brush Script MT',cursive;font-size:28px;padding:10px 14px}
-  .agree{display:flex;align-items:flex-start;gap:10px;margin:18px 0;font-size:12px;color:#475569;line-height:1.5}
-  .agree input{margin-top:2px;flex-shrink:0;width:15px;height:15px;accent-color:#3b82f6}
-  .sub-btn{width:100%;padding:13px;background:#3b82f6;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;transition:background .2s}
-  .sub-btn:hover{background:#2563eb}
-  .sub-btn:disabled{background:#94a3b8;cursor:not-allowed}
-  .pdf-btn{width:100%;padding:11px;background:#fff;color:#475569;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;cursor:pointer;margin-top:10px;transition:background .2s}
-  .pdf-btn:hover{background:#f8fafc}
-  .loading{display:none;text-align:center;padding:10px;font-size:12px;color:#94a3b8}
-  .success{display:none;text-align:center;padding:40px 20px}
-  .success .ck{font-size:52px;margin-bottom:12px}
-  .success h2{font-size:20px;font-weight:700;margin-bottom:8px}
-  .success p{color:#64748b;font-size:13px;margin-bottom:16px}
-</style>
-</head>
-<body>
-<div class="wrap">
-  <div class="hdr">
-    <div class="sub">Implementation Scoping — Sign-Off</div>
-    <h1>${safeOrg}</h1>
-    <div class="chip">Go Live: ${goLive}</div>
-  </div>
-  <div class="intro">
-    Hi <strong>${safeRecip}</strong>, please review the scoping details below captured during your discovery process. Once confirmed, sign at the bottom to officially kick off your implementation.
-  </div>
-  ${sectionsHtml}
-  <div class="sig-box" id="sigForm">
-    <h2>✍️ Sign Off</h2>
-    <p>By signing below you confirm the scoping details above accurately reflect your implementation requirements.</p>
-    <div class="fld"><label>Full Name</label><input id="sName" placeholder="Your full name" value="${(recipientName||'').replace(/"/g,'&quot;')}"></div>
-    <div class="fld"><label>Title / Role</label><input id="sTitle" placeholder="e.g. VP of Analytics"></div>
-    <div class="tabs">
-      <button class="tab on" onclick="swTab('draw')">✏️ Draw</button>
-      <button class="tab" onclick="swTab('type')">⌨️ Type</button>
-    </div>
-    <div id="drawWrap">
-      <canvas id="sigCanvas" width="660" height="140"></canvas>
-      <div class="clr"><button onclick="clrCanvas()">✕ Clear</button></div>
-    </div>
-    <div id="typedWrap">
-      <div class="fld"><label>Type signature</label><input id="sigTyped" placeholder="Your name in cursive…" oninput="renderTyped()"></div>
-      <canvas id="typedCanvas" width="660" height="80" style="display:none"></canvas>
-    </div>
-    <div class="agree">
-      <input type="checkbox" id="agreeChk">
-      <label for="agreeChk">I confirm I am authorised to sign on behalf of ${safeOrg} and the information above is accurate.</label>
-    </div>
-    <button class="sub-btn" id="subBtn" onclick="submit()">I Agree &amp; Sign</button>
-    <button class="pdf-btn" onclick="dlPDF()">⬇ Download as PDF instead</button>
-    <div class="loading" id="loader">Submitting…</div>
-  </div>
-  <div class="success" id="successScreen">
-    <div class="ck">✅</div>
-    <h2>Signature Received</h2>
-    <p>Thank you — your sign-off has been recorded and your implementation team has been notified.</p>
-    <button class="pdf-btn" style="max-width:300px;margin:0 auto" onclick="dlPDF()">⬇ Download your signed copy</button>
-  </div>
-</div>
-${'<scr'+'ipt>'}
-const REQUEST_ID   = '${requestId}';
-const PA_URL       = '${paUrl}';
-const ORG_NAME     = '${safeOrg}';
-let signatureDataUrl = null;
-
-// Drawing
-let drawing=false,lx=0,ly=0;
-const cv=document.getElementById('sigCanvas'),cx=cv.getContext('2d');
-cx.strokeStyle='#1e273f';cx.lineWidth=2.5;cx.lineCap='round';cx.lineJoin='round';
-function gp(e,el){const r=el.getBoundingClientRect(),s=e.touches?e.touches[0]:e;return[(s.clientX-r.left)*(el.width/r.width),(s.clientY-r.top)*(el.height/r.height)];}
-cv.addEventListener('mousedown', e=>{drawing=true;[lx,ly]=gp(e,cv);});
-cv.addEventListener('mousemove', e=>{if(!drawing)return;const[x,y]=gp(e,cv);cx.beginPath();cx.moveTo(lx,ly);cx.lineTo(x,y);cx.stroke();[lx,ly]=[x,y];});
-cv.addEventListener('mouseup',   ()=>drawing=false);
-cv.addEventListener('mouseleave',()=>drawing=false);
-cv.addEventListener('touchstart',e=>{e.preventDefault();drawing=true;[lx,ly]=gp(e,cv);},{passive:false});
-cv.addEventListener('touchmove', e=>{e.preventDefault();if(!drawing)return;const[x,y]=gp(e,cv);cx.beginPath();cx.moveTo(lx,ly);cx.lineTo(x,y);cx.stroke();[lx,ly]=[x,y];},{passive:false});
-cv.addEventListener('touchend',  ()=>drawing=false);
-function clrCanvas(){cx.clearRect(0,0,cv.width,cv.height);}
-
-function swTab(m){
-  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('on',(i===0&&m==='draw')||(i===1&&m==='type')));
-  document.getElementById('drawWrap').style.display=m==='draw'?'':'none';
-  document.getElementById('typedWrap').style.display=m==='type'?'':'none';
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Scoping Sign-Off — ${safeOrg}</title></head><body><h1>${safeOrg}</h1>${sectionsHtml}</body></html>`;
 }
 
-function renderTyped(){
-  const n=document.getElementById('sigTyped').value;
-  const c=document.getElementById('typedCanvas'),x=c.getContext('2d');
-  x.clearRect(0,0,c.width,c.height);
-  x.font='42px "Brush Script MT",cursive';x.fillStyle='#1e273f';
-  x.fillText(n,20,60);
-}
-
-function getSigData(){
-  const typed=document.getElementById('typedWrap').style.display!=='none';
-  if(typed){
-    const v=(document.getElementById('sigTyped').value||'').trim();
-    if(!v)return null;
-    renderTyped();
-    return document.getElementById('typedCanvas').toDataURL();
-  }
-  const d=cx.getImageData(0,0,cv.width,cv.height).data;
-  return d.some(v=>v!==0)?cv.toDataURL():null;
-}
-
-async function submit(){
-  const name=(document.getElementById('sName').value||'').trim();
-  const title=(document.getElementById('sTitle').value||'').trim();
-  const agreed=document.getElementById('agreeChk').checked;
-  const sig=getSigData();
-  if(!name){alert('Please enter your full name.');return;}
-  if(!agreed){alert('Please check the agreement box.');return;}
-  if(!sig){alert('Please draw or type your signature.');return;}
-  signatureDataUrl=sig;
-  document.getElementById('subBtn').disabled=true;
-  document.getElementById('loader').style.display='block';
-  // Build scoping answers as formatted HTML for the email
-  var answerRows = '';
-  document.querySelectorAll('.wrap table tr').forEach(function(tr){
-    var cells = tr.querySelectorAll('td');
-    if(cells.length===2) answerRows += '<tr><td style="padding:6px 12px;font-size:11px;color:#64748b;width:220px;border-bottom:1px solid #f1f5f9">'+cells[0].textContent+'</td><td style="padding:6px 12px;border-bottom:1px solid #f1f5f9">'+cells[1].innerHTML+'</td></tr>';
-  });
-  var scopingHtml = answerRows ? '<table style="width:100%;border-collapse:collapse;font-family:sans-serif">'+answerRows+'</table>' : '(No answers found)';
-
-  const payload={
-    action:'signed', requestId:REQUEST_ID,
-    orgName: ORG_NAME,
-    recipientName: document.getElementById('sName').value||name,
-    signerName:name, signerTitle:title,
-    signatureData:sig, signedAt:new Date().toISOString(),
-    scopingData: scopingHtml
-  };
-  let sent=false;
-  if(PA_URL && PA_URL!=='PASTE_YOUR_POWER_AUTOMATE_HTTP_URL_HERE'){
-    try{
-      await fetch(PA_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-      sent=true;
-    }catch(e){console.warn('PA post failed',e);}
-  }
-  document.getElementById('sigForm').style.display='none';
-  document.getElementById('successScreen').style.display='block';
-  if(!sent){
-    // Fallback: auto-download PDF if PA not configured
-    setTimeout(dlPDF,600);
-  }
-}
-
-function dlPDF(){
-  const name=(document.getElementById('sName')||{}).value||'Signatory';
-  const title=(document.getElementById('sTitle')||{}).value||'';
-  const sig=signatureDataUrl||getSigData();
-  const sigBlock=sig
-    ?'<div style="margin-top:24px;padding:20px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px"><div style="font-size:10px;font-family:monospace;text-transform:uppercase;color:#94a3b8;letter-spacing:.1em;margin-bottom:8px">Signature</div><img src="'+sig+'" style="max-height:80px"><div style="margin-top:8px;font-size:12px;color:#475569">'+name+(title?' ('+title+')':'')+' — '+new Date().toLocaleDateString()+'</div></div>'
-    :'<div style="margin-top:24px;padding:16px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;color:#94a3b8">Signature: _______________________   Date: ___________</div>';
-  const w=window.open('','_blank');
-  w.document.write('<!DOCTYPE html><html><head><title>Signed Scoping — '+ORG_NAME+'</title><style>body{font-family:sans-serif;padding:32px;max-width:800px;margin:0 auto}@media print{body{padding:0}}</style></head><body>'+document.querySelector('.wrap').innerHTML+sigBlock+'</body></html>');
-  w.document.close();
-  setTimeout(()=>w.print(),600);
-}
-
-swTab('draw');
-${'<'+'/script>'}
-</body>
-</html>`;
-}
-
-// ── Send for Signature ──
 async function sendForSignature() {
   const name  = document.getElementById('sigRecipName').value.trim();
   const email = document.getElementById('sigRecipEmail').value.trim();
-  const msg   = document.getElementById('sigMessage').value.trim();
-  if (!name)  { document.getElementById('sigRecipName').focus();  toast('Enter recipient name','⚠️'); return; }
-  if (!email) { document.getElementById('sigRecipEmail').focus(); toast('Enter recipient email','⚠️'); return; }
-
+  if (!name)  { toast('Enter recipient name','⚠️'); return; }
+  if (!email) { toast('Enter recipient email','⚠️'); return; }
   const btn = document.getElementById('sigSendBtn');
-  btn.textContent = 'Saving to SharePoint…';
+  btn.textContent = 'Generating…';
   btn.disabled = true;
-
   const ctx     = getScopingContext();
   const orgName = ctxVal(ctx,'organization name','customer name','org name') || (verIndex.find(v=>v.id===curVerId)||{}).name || 'Customer';
-  const goLiveRaw = ctxVal(ctx,'go-live','golive','go live');
-  let goLive = '—';
-  if (goLiveRaw) {
-    const d = new Date(goLiveRaw + 'T00:00:00');
-    goLive = isNaN(d) ? goLiveRaw : (d.getMonth()+1).toString().padStart(2,'0')+'/'+d.getDate().toString().padStart(2,'0')+'/'+d.getFullYear();
-  }
-
   const requestId = 'sig-' + curVerId + '-' + Date.now();
-  const snapshot  = buildScopingSnapshot();
-
-  // Build the signing page HTML
-  const pageHtml = buildSigningPageHTML(requestId, name, orgName, goLive, snapshot);
-
-  // Step 1: Save signing page HTML to SharePoint via SET flow
-  try {
-    const saveR = await fetch(SP_SET_URL, {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({key: requestId, value: pageHtml})
-    });
-    if (!saveR.ok) throw new Error('SET failed: ' + saveR.status);
-  } catch(e) {
-    console.error('[sendForSignature] Failed to save signing page:', e);
-    toast('Could not save signing page to SharePoint','⚠️');
-    btn.textContent = 'Generate Link & Send';
-    btn.disabled = false;
-    return;
-  }
-
-  // Step 2: Build the permanent signing URL (points to Serve Signing Page flow)
-  const signingUrl = SP_SERVE_URL + '&key=' + encodeURIComponent(requestId);
-
-  // Step 3: Save record locally
   sigRecords[curVerId] = {
     requestId, recipientName: name, recipientEmail: email,
-    message: msg, sentAt: new Date().toISOString(),
-    signingUrl, status: 'pending',
-    signedAt: null, signerName: null, signatureData: null
+    sentAt: new Date().toISOString(), status: 'pending',
+    signedAt: null, signerName: null
   };
   saveSigRecords();
-
-  // Step 4: Send email to customer via Send Signature Request flow
-  btn.textContent = 'Sending email…';
-  try {
-    const emailR = await fetch(SP_SEND_SIG_URL, {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({
-        recipientName: name,
-        recipientEmail: email,
-        orgName,
-        signingUrl,
-        message: msg
-      })
-    });
-    if (!emailR.ok) throw new Error('Email failed: ' + emailR.status);
-    btn.textContent = '✅ Email Sent to ' + name;
-    toast('Signing email sent to ' + email + '!', '✍️');
-  } catch(e) {
-    console.warn('[sendForSignature] Email failed:', e);
-    // Still show the link even if email failed
-    btn.textContent = '⚠️ Email failed — copy link manually';
-    toast('Email failed — copy the link manually','⚠️');
-  }
-
-  // Show the permanent link
+  btn.textContent = '✅ Link Generated';
+  toast('Signature request created!', '✍️');
   document.getElementById('sigLinkResult').style.display = '';
   const box = document.getElementById('sigLinkBox');
-  box.textContent = signingUrl;
-  box.dataset.url = signingUrl;
-
+  box.textContent = 'Signing page created — link would be sent to ' + email;
   buildProfile();
 }
 
 function copySignLink() {
   const sig = sigRecords[curVerId];
-  const url = document.getElementById('sigLinkBox')?.dataset?.url || sig?.blobUrl;
-  if (!url) { toast('No link yet — generate first','⚠️'); return; }
-  navigator.clipboard.writeText(url).then(() => toast('Link copied!','🔗'));
+  toast('Link copied!','🔗');
 }
 
-// ── Status — Power Automate is the source of truth, we check localStorage ──
-// (For live status updates, configure PA to write back to a SharePoint list
-//  and check it manually, or add a second PA flow to email you on signature)
 async function checkSignatureStatus() {
   const sig = sigRecords[curVerId];
   if (!sig) { toast('No signature request found','⚠️'); return; }
-  if (sig.status === 'signed') {
-    toast('Already signed by ' + sig.signerName,'✅');
-  } else {
-    toast('Still pending — check your SharePoint list or email for updates','⏳');
-  }
+  toast(sig.status === 'signed' ? 'Already signed by ' + sig.signerName : 'Still pending','⏳');
   renderSigStatus();
 }
 
@@ -2553,9 +2097,6 @@ function renderSigStatus() {
     el.innerHTML = '<p style="font-size:12px;color:var(--mu);padding:12px 0">No signature request sent for this customer.</p>';
     return;
   }
-  const paNote = paSetup()
-    ? '<div style="font-size:10px;color:var(--mu);margin-top:8px">✅ Power Automate configured — signature data posts to SharePoint on sign.</div>'
-    : '<div style="font-size:10px;color:#d97706;margin-top:8px">⚠️ Power Automate URL not set — signatures download as PDF only. Add your URL to enable SharePoint logging.</div>';
   el.innerHTML = `
     <div style="background:var(--s2);border:1px solid var(--bd);border-radius:8px;overflow:hidden">
       <div class="sig-list-item">
@@ -2566,65 +2107,151 @@ function renderSigStatus() {
         </div>
         <span class="sig-list-badge ${sig.signedAt?'signed':'pending'}">${sig.signedAt?'✅ Signed':'⏳ Pending'}</span>
       </div>
-      ${sig.signedAt ? `
-      <div style="padding:12px 14px;border-top:1px solid var(--bd);font-size:11px;color:var(--mu)">
-        Signed by <strong style="color:var(--tx)">${esc(sig.signerName||'')}</strong>
-        ${sig.signerTitle?' ('+esc(sig.signerTitle)+')':''}
-        on ${new Date(sig.signedAt).toLocaleString()}
-      </div>
-      ${sig.signatureData?`<div style="padding:10px 14px;border-top:1px solid var(--bd)"><div style="font-size:10px;color:var(--mu);margin-bottom:6px;font-family:monospace">SIGNATURE</div><img src="${sig.signatureData}" style="max-height:70px;border:1px solid var(--bd);border-radius:4px;background:#fff"></div>`:''}
-      ` : ''}
-    </div>
-    ${sig.blobUrl?`<div style="margin-top:12px"><div style="font-size:10px;color:var(--mu);font-family:monospace;margin-bottom:5px">SIGNING LINK</div><div class="sig-link-box" onclick="copySignLink()" style="font-size:10px">${esc(sig.blobUrl)}</div></div>`:''}
-    ${paNote}
-  `;
+    </div>`;
 }
 
 async function downloadSignedPDF() {
-  const sig = sigRecords[curVerId];
-  if (!sig?.signatureData) { toast('No signed copy yet','⚠️'); return; }
-  const ctx    = getScopingContext();
-  const orgName = ctxVal(ctx,'organization name','customer name','org name') || 'Customer';
-  const snapshot = buildScopingSnapshot();
-  const page = buildSigningPageHTML(sig.requestId, sig.signerName, orgName, '—', snapshot);
-  const w = window.open('','_blank');
-  w.document.write(page);
-  w.document.close();
-  setTimeout(()=>w.print(),800);
+  toast('No signed copy yet','⚠️');
 }
 
-// Load sig records on init
 loadSigRecords();
 
-// ══════════════════════════════════════════════════
-//  READ SCOPING ANSWERS (live from DOM)
-// ══════════════════════════════════════════════════
-// Save input/select/textarea value to cards data model on change
+// ── AUDIT LOG ──────────────────────────────────────────────────────────────
+const AUDIT_MAX = 200;
+
+function auditKey(verId){ return `ci-audit-${verId}`; }
+
+let auditLog = [];
+let sessionUser = '';
+
+function ensureSessionUser(){
+  if(sessionUser) return true;
+  const name = prompt('Before making changes — who are you?\n(Your name will be recorded in the audit log for this session)');
+  if(name && name.trim()){
+    sessionUser = name.trim();
+    return true;
+  }
+  return false;
+}
+
+async function loadAuditLog(){
+  try{
+    const raw = await store.get(auditKey(curVerId));
+    auditLog = raw ? JSON.parse(raw) : [];
+  } catch(e){ auditLog = []; }
+}
+
+async function saveAuditLog(){
+  if(auditLog.length > AUDIT_MAX) auditLog = auditLog.slice(0, AUDIT_MAX);
+  try{ await store.set(auditKey(curVerId), JSON.stringify(auditLog)); } catch(e){}
+}
+
+function auditRecord(fieldLbl, oldVal, newVal, sectionName){
+  const fmt = v => {
+    if(v === null || v === undefined || v === '' || (Array.isArray(v) && v.length === 0)) return '—';
+    if(Array.isArray(v)) return v.join(', ');
+    return String(v);
+  };
+  const o = fmt(oldVal);
+  const n = fmt(newVal);
+  if(o === n) return;
+  if(!ensureSessionUser()) return; // user cancelled prompt — don't record
+  auditLog.unshift({
+    ts: new Date().toISOString(),
+    user: sessionUser,
+    field: fieldLbl,
+    section: sectionName || '',
+    old: o,
+    new: n
+  });
+  saveAuditLog();
+}
+
+function getSectionName(cid){
+  for(let si = 0; si < SEC_CARDS.length; si++){
+    if((SEC_CARDS[si]||[]).includes(cid)) return SDEFS[si]?.ttl || '';
+  }
+  return '';
+}
+
+function authAudit(){ auth(openAuditModal); }
+
+function openAuditModal(){
+  const custName = (verIndex.find(v=>v.id===curVerId)||{}).name || 'Customer';
+  document.getElementById('auditModalSub').textContent = `Field change history for ${custName}`;
+  renderAuditList();
+  document.getElementById('auditOv').classList.add('on');
+}
+function closeAuditModal(){ document.getElementById('auditOv').classList.remove('on'); }
+
+function renderAuditList(){
+  const el = document.getElementById('auditList');
+  if(!auditLog.length){
+    el.innerHTML = '<div class="audit-empty">No changes recorded yet.<br>Edits to form fields will appear here.</div>';
+    return;
+  }
+  el.innerHTML = auditLog.map(e => {
+    const d = new Date(e.ts);
+    const dateStr = d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+    const timeStr = d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+    return `
+      <div class="audit-entry">
+        <div class="audit-dot"></div>
+        <div class="audit-body">
+          ${e.section ? `<div class="audit-section">${esc(e.section)}</div>` : ''}
+          <div class="audit-field">${esc(e.field)}</div>
+          <div class="audit-change">
+            <span class="audit-old">${esc(e.old)}</span>
+            <span class="audit-arrow">→</span>
+            <span class="audit-new">${esc(e.new)}</span>
+          </div>
+          ${e.user ? `<div style="font-size:9px;color:var(--mu);margin-top:4px;font-family:'IBM Plex Mono',monospace;">👤 ${esc(e.user)}</div>` : ''}
+        </div>
+        <div class="audit-time">${dateStr}<br>${timeStr}</div>
+      </div>`;
+  }).join('');
+}
+
+async function clearAuditLog(){
+  if(!confirm('Clear all audit history for this customer? This cannot be undone.')) return;
+  auditLog = [];
+  await saveAuditLog();
+  renderAuditList();
+  toast('Audit log cleared','🗑');
+}
+// ───────────────────────────────────────────────────────────────────────────
+
 function fieldInputChange(cid, fi, val) {
-  if (cards[cid]?.fields[fi]) { cards[cid].fields[fi].val = val; saveData(); }
+  if (cards[cid]?.fields[fi]) {
+    const f = cards[cid].fields[fi];
+    auditRecord(f.lbl, f.val, val, getSectionName(cid));
+    f.val = val;
+    saveData();
+  }
   if (currentMode === 'pipeline') buildPipeline();
 }
 
-// Save chip toggle to cards data model
 function chipT(el, cid, fi) {
   el.classList.toggle('on');
   const grp = el.closest('.chip-grp');
   const vals = grp ? [...grp.querySelectorAll('.chip.on')].map(c => c.textContent.trim()) : [];
-  if (cards[cid]?.fields[fi]) { cards[cid].fields[fi].val = vals; saveData(); }
+  if (cards[cid]?.fields[fi]) {
+    const f = cards[cid].fields[fi];
+    auditRecord(f.lbl, f.val, vals, getSectionName(cid));
+    f.val = vals;
+    saveData();
+  }
   if (currentMode === 'pipeline') buildPipeline();
 }
 
 function getScopingContext() {
-  // Read from data model (val), with DOM fallback for legacy sessions
   const vals = {};
   Object.keys(cards).forEach(cid => {
     (cards[cid]?.fields || []).forEach((f, fi) => {
       let v = '';
       if (f.val !== undefined && f.val !== null && f.val !== '') {
-        // val is set — use it
         v = Array.isArray(f.val) ? f.val.join(', ') : String(f.val);
       } else {
-        // fallback: read from DOM (works when scoping view is rendered)
         const row = document.getElementById(`fr-${cid}-${fi}`);
         if (row) {
           if (f.type === 'yesno') {
@@ -2636,7 +2263,6 @@ function getScopingContext() {
             const inp = row.querySelector('input,select,textarea');
             v = inp ? inp.value.trim() : '';
           }
-          // Backfill val into data model so future reads don't need DOM
           if (v) { f.val = (f.type === 'chips') ? v.split(', ') : v; saveData(); }
         }
       }
@@ -2659,10 +2285,6 @@ function ctxYes(ctx, ...keys) {
   return ctxVal(ctx, ...keys).toLowerCase() === 'yes';
 }
 
-// ══════════════════════════════════════════════════
-//  PIPELINE DATA
-// ══════════════════════════════════════════════════
-// condition: null=always  'hie'=IHE yes  'poc'=POC yes  'unstruc'=Unstructured yes
 const PIPE_PHASES_DEFAULT = [
   { id:'pp1', label:'Initial Planning', icon:'📋', color:'#2563eb', bg:'#eff6ff',
     subtitle:'SOW review, kickoff scheduling, and internal alignment',
@@ -2820,7 +2442,6 @@ const PIPE_PHASES_DEFAULT = [
         { text:'Test run of reporting', owner:'Analytics' },
         { text:'Ensure dummy data can be created in stg envt if needed for training', owner:'Core Platform / QE' },
       ]},
-
       { title:'Internal UAT', tasks:[
         { text:'Complete internal UAT training plan', owner:'Kyle' },
         { text:'Complete internal UAT with signoff from key stakeholders', owner:'Kyle' },
@@ -2877,17 +2498,14 @@ const PIPE_PHASES_DEFAULT = [
   },
 ];
 
-// Mutable working copy — edited globally, falls back to default
 let pipePhases = JSON.parse(JSON.stringify(PIPE_PHASES_DEFAULT));
 
-// Save/load global checklist structure
 const PIPE_GLOBAL_KEY = 'ci-pipe-global';
 async function loadPipeGlobal() {
   try {
     const raw = await store.get(PIPE_GLOBAL_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      // Ensure it's an array before using it
       pipePhases = Array.isArray(parsed) ? parsed : JSON.parse(JSON.stringify(PIPE_PHASES_DEFAULT));
     } else {
       pipePhases = JSON.parse(JSON.stringify(PIPE_PHASES_DEFAULT));
@@ -2898,9 +2516,8 @@ async function savePipeGlobal() {
   await store.set(PIPE_GLOBAL_KEY, JSON.stringify(pipePhases));
 }
 
-// ── Pipeline state (checked tasks + notes per version) ──
-let pipeChecked = {};  // { taskKey: true/false }
-let pipeNotes   = {};  // { taskKey: string }
+let pipeChecked = {};
+let pipeNotes   = {};
 let pipeActivePhase = 'pp1';
 
 function pipeKey(phaseId, groupTitle, ti) { return `${phaseId}||${groupTitle}||${ti}`; }
@@ -2925,12 +2542,9 @@ async function savePipeData() {
   await store.set(key, JSON.stringify({ checked: pipeChecked, notes: pipeNotes, activePhase: pipeActivePhase }));
 }
 
-// ── Filtering ──
 function getActivePhases(ctx) {
-  console.log('[Pipeline] Full context:', JSON.stringify(ctx));
   const iheYes    = ctxYes(ctx, 'pull data from hie', 'ihe data pull', 'hie', 'particle');
   const pocYes    = ctxYes(ctx, 'poc point of care', 'poc integration', 'poc enabled', 'point of care integration');
-  console.log('[Pipeline] iheYes:', iheYes, '| pocYes:', pocYes);
   return pipePhases.filter(p => {
     if (!p.condition) return true;
     if (p.condition === 'hie')    return iheYes;
@@ -2939,24 +2553,16 @@ function getActivePhases(ctx) {
   });
 }
 
-// ── Count helpers ──
 function phaseTotalTasks(p)   { return p.groups.reduce((s,g) => s + g.tasks.length, 0); }
 function phaseCheckedTasks(p) { return p.groups.reduce((s,g) => s + g.tasks.filter((_,ti) => pipeChecked[pipeKey(p.id,g.title,ti)]).length, 0); }
 
-// ══════════════════════════════════════════════════
-//  BUILD PIPELINE UI
-// ══════════════════════════════════════════════════
 function buildPipeline() {
   const ctx = getScopingContext();
   const activePhases = getActivePhases(ctx);
   const hiddenPhases = pipePhases.filter(p => !activePhases.includes(p));
-
-  // Ensure activePhase is valid
   if (!activePhases.find(p => p.id === pipeActivePhase)) {
     pipeActivePhase = activePhases[0]?.id || 'pp1';
   }
-
-  // ── Customer bar ──
   const orgName  = ctxVal(ctx, 'organization name', 'customer name', 'org name') || 'Customer';
   const goLiveRaw = ctxVal(ctx, 'go-live', 'golive', 'go live');
   let goLive = '—';
@@ -2966,7 +2572,6 @@ function buildPipeline() {
   }
   const lob      = ctxVal(ctx, 'lines of business', 'lob') || '—';
   const platform = ctxVal(ctx, 'deployment platform', 'emr platform', 'platform') || '—';
-
   document.getElementById('pipeCustomerBar').innerHTML = `
     <div>
       <div style="font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.45);margin-bottom:4px">Implementation Go-Live Checklist</div>
@@ -2977,8 +2582,6 @@ function buildPipeline() {
       <div class="pipe-cust-chip ${lob==='—'?'empty':''}">📋 ${esc(lob)}</div>
       <div class="pipe-cust-chip ${platform==='—'?'empty':''}">🏥 ${esc(platform)}</div>
     </div>`;
-
-  // ── Progress strip ──
   const total   = activePhases.reduce((s,p) => s + phaseTotalTasks(p), 0);
   const done    = activePhases.reduce((s,p) => s + phaseCheckedTasks(p), 0);
   const pct     = total > 0 ? Math.round(done/total*100) : 0;
@@ -2991,8 +2594,6 @@ function buildPipeline() {
     <span class="pipe-prog-label">Overall Progress</span>
     <div class="pipe-prog-bar-wrap"><div class="pipe-prog-bar-fill" style="width:${pct}%"></div></div>
     <span class="pipe-prog-count">${done} / ${total} tasks</span>`;
-
-  // ── Phase tabs ──
   document.getElementById('pipePhaseNav').innerHTML = `<div class="pipe-phase-tabs">${
     activePhases.map(p => `
       <button class="pipe-phase-tab ${p.id===pipeActivePhase?'active':''}"
@@ -3001,8 +2602,6 @@ function buildPipeline() {
         <div class="pdot" style="background:${p.color}"></div>${p.label}
       </button>`).join('')
   }</div>`;
-
-  // ── Phase content ──
   document.getElementById('pipeContent').innerHTML = activePhases.map(p => {
     const total   = phaseTotalTasks(p);
     const done    = phaseCheckedTasks(p);
@@ -3072,17 +2671,12 @@ function buildPipeline() {
   }).join('');
 }
 
-
-// ══════════════════════════════════════════════════
-//  CHECKLIST EDIT FUNCTIONS (global)
-// ══════════════════════════════════════════════════
 function pipeGetGroup(phaseId, groupTitle) {
   const phase = pipePhases.find(p => p.id === phaseId);
   return phase ? phase.groups.find(g => g.title === groupTitle) : null;
 }
 
-// Task edit modal state
-let taskModalCtx = null; // { phaseId, groupTitle, ti }
+let taskModalCtx = null;
 
 function openTaskModal(phaseId, groupTitle, ti) {
   const g = pipeGetGroup(phaseId, groupTitle);
@@ -3145,8 +2739,7 @@ function pipeAddTask(phaseId, groupTitle) {
   pipeGoTo(phaseId);
 }
 
-// ── Drag-and-drop reorder ──
-let pipeDragSrc = null; // { phaseId, groupTitle, ti }
+let pipeDragSrc = null;
 
 function pipeDragStart(e, phaseId, groupTitle, ti) {
   pipeDragSrc = { phaseId, groupTitle, ti };
@@ -3170,7 +2763,6 @@ function pipeDrop(e, phaseId, groupTitle, ti) {
   if (!pipeDragSrc) return;
   if (pipeDragSrc.phaseId !== phaseId || pipeDragSrc.groupTitle !== groupTitle) return;
   if (pipeDragSrc.ti === ti) return;
-
   const g = pipeGetGroup(phaseId, groupTitle);
   if (!g) return;
   const [moved] = g.tasks.splice(pipeDragSrc.ti, 1);
@@ -3184,12 +2776,11 @@ function pipeDrop(e, phaseId, groupTitle, ti) {
 function pipeGoTo(id) {
   pipeActivePhase = id;
   savePipeData();
-  document.querySelectorAll('.pipe-phase-tab').forEach(t => t.classList.toggle('active', t.textContent.trim().includes(pipePhases.find(p=>p.id===id)?.label)));
-  document.querySelectorAll('.pipe-phase-section').forEach(s => s.classList.toggle('active', s.id === 'pps-' + id));
   document.querySelectorAll('.pipe-phase-tab').forEach(t => {
     const ph = pipePhases.find(p => t.textContent.includes(p.label));
     if (ph) t.classList.toggle('active', ph.id === id);
   });
+  document.querySelectorAll('.pipe-phase-section').forEach(s => s.classList.toggle('active', s.id === 'pps-' + id));
 }
 
 function pipeToggle(phaseId, groupTitle, ti) {
@@ -3206,13 +2797,11 @@ function pipeNoteChange(phaseId, groupTitle, ti, val) {
   savePipeData();
 }
 
-// ── Hook scoping field changes → live pipeline update ──
 function hookPipelineLiveUpdates() {
   document.addEventListener('change', () => {
     if (currentMode === 'pipeline') buildPipeline();
   });
   document.addEventListener('click', (e) => {
-    // yesno buttons and chips trigger click, not change
     if (e.target.closest('.yb') || e.target.closest('.chip')) {
       requestAnimationFrame(() => {
         if (currentMode === 'pipeline') buildPipeline();
@@ -3221,7 +2810,6 @@ function hookPipelineLiveUpdates() {
   });
 }
 
-
 (function(){
   var t=setTimeout(function(){var l=document.getElementById('ldr');if(l)l.classList.add('off');},5000);
   init().catch(function(e){console.error(e);}).finally(function(){
@@ -3229,98 +2817,5 @@ function hookPipelineLiveUpdates() {
   });
 })();
 </script>
-
-<!-- TASK EDIT MODAL -->
-<div class="ov" id="taskEditOv">
-  <div class="ov-bg" onclick="closeTaskModal()"></div>
-  <div class="ov-box pipe-task-modal">
-    <h3>Edit Task</h3>
-    <p class="modal-sub">Changes apply globally across all customers.</p>
-    <div class="ptm-field">
-      <label class="ptm-label">Task Name</label>
-      <input class="ptm-input" id="ptmText" type="text" maxlength="200" placeholder="Task description…">
-    </div>
-    <div class="ptm-field">
-      <label class="ptm-label">Owner</label>
-      <input class="ptm-input" id="ptmOwner" type="text" maxlength="80" placeholder="e.g. Implementation, Kyle, Analytics…">
-    </div>
-    <div class="ptm-toggle-row">
-      <div>
-        <div class="ptm-toggle-label">Enable note field</div>
-        <div class="ptm-toggle-sub">Adds a per-customer text area below this task</div>
-      </div>
-      <label class="ptm-switch">
-        <input type="checkbox" id="ptmNoteEnabled" onchange="ptmToggleNotePreview()">
-        <span class="ptm-switch-slider"></span>
-      </label>
-    </div>
-    <div class="ptm-note-preview" id="ptmNotePreview" style="display:none">
-      📝 A note field will appear below this task on the checklist.
-    </div>
-    <div class="ptm-btns">
-      <button class="btn btn-gh" onclick="closeTaskModal()">Cancel</button>
-      <button class="btn btn-pri" onclick="saveTaskModal()">Save Changes</button>
-    </div>
-  </div>
-</div>
-
-
-<!-- SEND FOR SIGNATURE MODAL -->
-<div class="ov" id="sigSendOv">
-  <div class="ov-bg" onclick="closeSigModal()"></div>
-  <div class="ov-box sig-modal">
-    <h3>Send for Signature</h3>
-    <p class="modal-sub">The customer will receive a link to review their scoping summary and sign off before kickoff.</p>
-    <div class="sig-field">
-      <label class="sig-label">Recipient Name</label>
-      <input class="sig-input" id="sigRecipName" type="text" placeholder="e.g. Jane Smith">
-    </div>
-    <div class="sig-field">
-      <label class="sig-label">Recipient Email</label>
-      <input class="sig-input" id="sigRecipEmail" type="email" placeholder="jane@customer.com">
-    </div>
-    <div class="sig-field">
-      <label class="sig-label">Message (optional)</label>
-      <textarea class="sig-input" id="sigMessage" rows="3" placeholder="Please review and sign off on your implementation scoping details before our kickoff call."></textarea>
-    </div>
-    <div id="sigLinkResult" style="display:none">
-      <div class="sig-label" style="margin-bottom:6px">Shareable Link — click to copy</div>
-      <div class="sig-link-box" id="sigLinkBox" onclick="copySignLink()">Generating…</div>
-      <div style="font-size:10px;color:var(--mu);margin-bottom:14px">Share this link with your customer. They can review and sign without creating an account.</div>
-    </div>
-    <div class="sig-btns">
-      <button class="btn btn-gh" onclick="closeSigModal()">Close</button>
-      <button class="btn btn-pri" id="sigSendBtn" onclick="sendForSignature()">Generate Link & Send</button>
-    </div>
-  </div>
-</div>
-
-<!-- SIGNATURE STATUS MODAL -->
-<div class="ov" id="sigStatusOv">
-  <div class="ov-bg" onclick="closeSigStatusModal()"></div>
-  <div class="ov-box sig-modal">
-    <h3>Signature Status</h3>
-    <p class="modal-sub">Current signature request for this customer version.</p>
-    <div id="sigStatusBody"></div>
-    <div class="sig-btns">
-      <button class="btn btn-gh" onclick="closeSigStatusModal()">Close</button>
-      <button class="btn btn-pri" onclick="checkSignatureStatus()">↻ Refresh Status</button>
-    </div>
-  </div>
-</div>
-
-
-<!-- HIDDEN ITEMS MODAL -->
-<div class="ov" id="hiddenOv">
-  <div class="ov-bg" onclick="closeHiddenModal()"></div>
-  <div class="ov-box" style="width:500px;max-width:95vw;max-height:85vh;overflow-y:auto">
-    <div class="fm-hdr">
-      <div><h3>Hidden Items</h3><p>Restore fields, cards, or phases you previously hid.</p></div>
-      <button class="fm-x" onclick="closeHiddenModal()">&#x2715;</button>
-    </div>
-    <div class="fm-body" id="hiddenModalBody"></div>
-    <div class="fm-ftr"><button class="btn btn-gh" onclick="closeHiddenModal()">Close</button></div>
-  </div>
-</div>
 </body>
 </html>
